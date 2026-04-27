@@ -1,0 +1,311 @@
+# =============================================================================
+# config.yaml — SHERLOCK crRNA Design Pipeline · v1.0
+# ~/sherlock/config.yaml
+# =============================================================================
+
+# ---------------------------------------------------------------------------
+# ORGANISM
+# ---------------------------------------------------------------------------
+organism:
+  name:    "Clostridioides_difficile"
+  display: "Clostridioides difficile"
+
+# ---------------------------------------------------------------------------
+# PATHS
+# ---------------------------------------------------------------------------
+paths:
+  project:      "/home/labinfo/sherlock"
+  scripts:      "/home/labinfo/sherlock/scripts"
+  main:         "/home/labinfo/sherlock/main"
+  bakta_db:     "/home/labinfo/bakta_db/db"
+  busco_lineages: "/home/labinfo/sherlock/main/data/02_qc/busco/lineages"
+
+# ---------------------------------------------------------------------------
+# CONDA ENVIRONMENTS
+# ---------------------------------------------------------------------------
+conda:
+  main:     "sherlock"
+  bakta:    "bakta"
+  checkm2:  "checkm2"
+  quast:    "quast"
+  busco:    "busco"
+  badgers:  "badgers-cas13"
+  adapt:    "adapt"
+
+# ---------------------------------------------------------------------------
+# TOOLS  (all in sherlock env unless noted)
+# ---------------------------------------------------------------------------
+tools:
+  datasets:      "datasets"
+  efetch:        "efetch"
+  mafft:         "mafft"
+  blastn:        "blastn"
+  makeblastdb:   "makeblastdb"
+  bowtie2:       "bowtie2"
+  bowtie2_build: "bowtie2-build"
+  seqkit:        "seqkit"
+  mlst:          "mlst"
+  iqtree:        "iqtree"
+  rnaplfold:     "RNAplfold"
+  primer3:       "primer3_core"
+  primedrpa:     "PrimedRPA"
+  snakemake:     "snakemake"
+  bakta:         "bakta"           # run via conda bakta env
+  checkm2:       "checkm2"         # run via conda checkm2 env
+  quast:         "quast.py"        # run via conda quast env
+  busco:         "busco"           # run via conda busco env
+  badgers:       "/home/labinfo/miniconda3/envs/badgers-cas13/bin/design_guides.py"
+  casilico:      "Rscript"         # CaSilico via R
+
+# ---------------------------------------------------------------------------
+# M01 — GENOME DOWNLOAD
+# ---------------------------------------------------------------------------
+download:
+  assembly_level: "Complete Genome"
+  max_scaffolds:  2
+  require_gcf:    true
+  n_parallel:     4
+  retries:        3
+  include_gff3:   true
+  include_fna:    true
+
+  anchors:
+    R20291_RT027:    "GCF_015732555.1"
+    CD196_RT027:     "GCF_021378415.1"
+    CD630Derm_RT012: "GCF_000953275.1"
+    DSM27639_RT012:  "GCF_003313565.1"
+    L_NTCD03_nontox: "GCF_951803555.1"
+
+  ref_genes:
+    tcdA: "KF800788"
+    tcdB: "KF800789"
+    tcdC: "KF800790"
+    cdtA: "AY187778"
+    cdtB: "AY187779"
+    tpiA: "GQ500445"
+    sodA: "GQ500453"
+    16S:  "NR_102783"
+
+# ---------------------------------------------------------------------------
+# M01b — UHGG  (downloaded when needed by M12)
+# ---------------------------------------------------------------------------
+uhgg:
+  version:       "v2.0"
+  ftp_base:      "https://ftp.ebi.ac.uk/pub/databases/metagenomics/mgnify_genomes/human-gut"
+  n_parallel:    8
+  exclude_cdiff: true
+
+# ---------------------------------------------------------------------------
+# M02 — QC
+# ---------------------------------------------------------------------------
+qc:
+  min_completeness:  95.0
+  max_contamination:  2.0
+  min_n50:          100000
+  busco_primary:    "clostridia_odb10"
+  busco_secondary:  "clostridiales_odb10"
+  busco_min_pct:    90.0
+  run_busco:        true
+
+# ---------------------------------------------------------------------------
+# M03 — MLST
+# ---------------------------------------------------------------------------
+mlst:
+  scheme:       "cdifficile"
+  min_identity: 95.0
+  min_coverage: 90.0
+  st_to_clade:
+    "1":  "Clade_2"
+    "3":  "Clade_1"
+    "11": "Clade_1"
+    "37": "Clade_1"
+    "54": "Clade_1"
+
+# ---------------------------------------------------------------------------
+# M04 — BAKTA
+# ---------------------------------------------------------------------------
+annotation:
+  threads:        8
+  min_contig_len: 200
+  complete:       true
+
+# ---------------------------------------------------------------------------
+# M05 — CLASSIFICATION  (Groups A / B / C)
+# ---------------------------------------------------------------------------
+classification:
+  min_identity:   80.0
+  min_coverage:   70.0
+  tcdC_del_bp:    18
+  junction_flank: 20
+  groups:
+    A:
+      required:  ["tcdA", "tcdB", "cdtA", "cdtB"]
+      tcdC_del:  true
+      label:     "Hypervirulent_RT027"
+      reaction:  "both"
+    B:
+      required:  ["tcdA", "tcdB"]
+      absent:    ["cdtA", "cdtB"]
+      tcdC_del:  false
+      label:     "Toxigenic_RT012"
+      reaction:  "A"
+    C:
+      absent:    ["tcdA", "tcdB"]
+      label:     "NonToxigenic"
+      reaction:  "offtarget"
+
+# ---------------------------------------------------------------------------
+# M06 — EXTRACTION
+# ---------------------------------------------------------------------------
+extraction:
+  utr_flank_nt: 50
+  targets: ["tcdA", "tcdB", "tcdC", "cdtA", "cdtB",
+            "tpiA", "sodA", "16S"]
+
+# ---------------------------------------------------------------------------
+# M07 — ALIGNMENT + CONSERVATION
+# ---------------------------------------------------------------------------
+alignment:
+  tool:    "mafft"
+  mode:    "auto"
+  threads: 8
+  conservation:
+    shannon:  true
+    trident:  true
+    wilcoxon: true
+  badgers_mult:
+    tcdA:  ["groupA", "groupB"]
+    tcdB:  ["groupA", "groupB"]
+    tpiA:  ["groupA", "groupB", "groupC"]
+    sodA:  ["groupA", "groupB", "groupC"]
+    "16S": ["groupA", "groupB", "groupC"]
+  badgers_diff:
+    tcdC_junction:
+      on_target:  "groupA"
+      off_target: "groupB"
+    cdtA:
+      on_target:  "groupA"
+      off_target: "groupC"
+
+# ---------------------------------------------------------------------------
+# M08 — mRNA ACCESSIBILITY
+# ---------------------------------------------------------------------------
+accessibility:
+  window:  80
+  span:    40
+  min_acc: 0.5
+
+# ---------------------------------------------------------------------------
+# M09 — crRNA DESIGN  (CaSilico)
+# ---------------------------------------------------------------------------
+crna:
+  spacer_len:    28
+  gc_min:        0.30
+  gc_max:        0.70
+  polyu_max:     3
+  mfe_max:       -5.0
+  slide_step:    1
+  junction_mode: true
+  dr: "GGGGAUUUAGACUACCCCAAAAACGAAGGGGGGACUAAAAC"
+
+# ---------------------------------------------------------------------------
+# M10 — RT-RPA PRIMERS
+# ---------------------------------------------------------------------------
+primers:
+  len_min:      30
+  len_max:      35
+  amplicon_min: 100
+  amplicon_max: 200
+  tm_min:       37.0
+  tm_max:       42.0
+  gc_min:       0.40
+  gc_max:       0.60
+  crna_margin:  10
+  t7: "AATTCTAATACGACTCACTATAGG"
+  reaction_A:
+    targets:  ["tcdB", "tcdA", "16S"]
+    ortholog: "LwCas13a"
+    reporter: "poly-U"
+  reaction_B:
+    targets:  ["cdtA", "cdtB", "tcdC_PAN", "tcdC_RT027jct", "tpiA", "sodA"]
+    ortholog: "LwCas13a"
+    reporter: "poly-U"
+
+# ---------------------------------------------------------------------------
+# M11 — BADGERS
+# ---------------------------------------------------------------------------
+badgers:
+  algorithm:    "wgan-am"
+  mult_targets: ["tcdA", "tcdB", "tpiA", "sodA", "16S"]
+  diff_targets: ["tcdC_junction", "cdtA"]
+
+# ---------------------------------------------------------------------------
+# M12 — SPECIFICITY
+# ---------------------------------------------------------------------------
+specificity:
+  reject_identity: 80.0
+  reject_coverage: 70.0
+  evalue:          0.01
+  ontarget_min:    0.90
+  blastn_task:     "blastn-short"
+  blastn_word:     7
+  bowtie2_mode:    "--very-sensitive"
+  bowtie2_mm:      3
+
+# ---------------------------------------------------------------------------
+# M13 — RANKING
+# ---------------------------------------------------------------------------
+ranking:
+  top_n:      5
+  report_fmt: "html"
+  weights:
+    badgers_score:  0.35
+    accessibility:  0.20
+    conservation:   0.20
+    specificity:    0.15
+    discrimination: 0.10
+
+# ---------------------------------------------------------------------------
+# M13b — MONTE CARLO LOD
+# ---------------------------------------------------------------------------
+lod:
+  n_simulations:  10000
+  kcat_mean:      1300.0
+  kcat_cv:           0.15
+  km_mean:           5.0
+  km_cv:             0.20
+  rpa_eff_mean:      0.95
+  rpa_eff_cv:        0.10
+  reporter_conc:   500.0
+  reaction_vol:     20.0
+  detect_thresh:     1.0
+  copies_range: [1, 1000000]
+
+# ---------------------------------------------------------------------------
+# M14 — SYNTHETIC CONTROLS
+# ---------------------------------------------------------------------------
+synthetic:
+  flank_nt:   100
+  include_dr: true
+
+# ---------------------------------------------------------------------------
+# M15 — RT-qPCR
+# ---------------------------------------------------------------------------
+rtqpcr:
+  amplicon_min: 80
+  amplicon_max: 200
+  tm_target:    60.0
+  tm_tol:        2.0
+  gc_min:        0.45
+  gc_max:        0.65
+  targets: ["tcdA", "tcdB", "tcdC", "cdtA", "tpiA", "sodA"]
+
+# ---------------------------------------------------------------------------
+# M17 — FIGURES
+# ---------------------------------------------------------------------------
+figures:
+  formats: ["svg", "pdf"]
+  dpi:     300
+  phylogeny:
+    bootstrap:    1000
+    model_select: true
