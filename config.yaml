@@ -30,6 +30,7 @@ conda:
   quast:    "quast"
   busco:    "busco"
   badgers:  "badgers-cas13"
+  badgers_dir: "/home/labinfo/miniconda3/envs/badgers-cas13/bin/design_guides.py"
   adapt:    "adapt"
 
 # ---------------------------------------------------------------------------
