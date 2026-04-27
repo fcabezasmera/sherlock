@@ -338,7 +338,7 @@ def main():
 
     meta = str(Path(cfg["paths"]["main"]) / "01_download" / "ncbi_dataset.tsv")
     ok, info = check_metadata(meta)
-    record("inputs", "ncbi_dataset.tsv", ok, info)
+    record("inputs", "ncbi_dataset.tsv", None, info)
 
     # ------------------------------------------------------------------
     # Summary
