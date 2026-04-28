@@ -5,9 +5,8 @@ SHERLOCK crRNA Design Pipeline · v1.0
 Module : M00 · Installation Verification
 
 PURPOSE
-    Verifies all tools, Python packages, conda environments,
-    and paths required by the pipeline.
-    Reports are overwritten on each run.
+    Verifies all tools, Python packages, and conda environments
+    required by the pipeline. Reports overwritten on each run.
 
 USAGE
     conda activate sherlock
@@ -23,6 +22,7 @@ OUTPUT
 
 # =============================================================================
 # CONFIGURABLE PARAMETERS
+# Add / remove entries to adapt to a different organism or tool set.
 # =============================================================================
 
 DEFAULT_CONFIG = "~/sherlock/config.yaml"
@@ -30,34 +30,22 @@ DEFAULT_CONFIG = "~/sherlock/config.yaml"
 # CLI tools in sherlock env: {display_name: executable}
 TOOLS = {
     "datasets":      "datasets",
-    "efetch":        "efetch",
     "MAFFT":         "mafft",
     "blastn":        "blastn",
     "makeblastdb":   "makeblastdb",
     "Bowtie2":       "bowtie2",
     "bowtie2-build": "bowtie2-build",
     "seqkit":        "seqkit",
-    "mlst":          "mlst",
-    "IQ-TREE":       "iqtree",
     "RNAplfold":     "RNAplfold",
     "Primer3":       "primer3_core",
     "PrimedRPA":     "PrimedRPA",
     "Snakemake":     "snakemake",
 }
 
-# Tools in external conda envs: {display_name: (env, executable)}
-EXTERNAL_TOOLS = {
-    "bakta":    ("bakta",    "bakta"),
-    "checkm2":  ("checkm2", "checkm2"),
-}
-
 # Conda environments to verify
 CONDA_ENVS = [
     "sherlock",
-    "bakta",
-    "checkm2",
     "adapt",
-    "badgers-cas13",
 ]
 
 # Python packages: {display_name: import_name}
@@ -69,12 +57,8 @@ PACKAGES = {
     "seaborn":    "seaborn",
     "PyYAML":     "yaml",
     "tqdm":       "tqdm",
-    "click":      "click",
     "scipy":      "scipy",
 }
-
-# Bakta DB expected files
-BAKTA_DB_FILES = ["bakta.db", "pfam.h3m"]
 
 # =============================================================================
 # IMPORTS
@@ -120,21 +104,6 @@ def check_tool(exe: str):
     return True, "found"
 
 
-def check_external_tool(env: str, exe: str):
-    try:
-        r = subprocess.run(
-            ["conda", "run", "-n", env, exe, "--version"],
-            capture_output=True, text=True, timeout=30)
-        out = (r.stdout + r.stderr).strip()
-        if out:
-            lines = [l for l in out.splitlines() if l.strip()]
-            if lines:
-                return True, f"[{env}] {lines[0][:55]}"
-        return True, f"[{env}] found"
-    except Exception as e:
-        return False, str(e)
-
-
 def check_conda_env(env: str):
     try:
         r = subprocess.run(
@@ -166,27 +135,6 @@ def check_dir(path: str):
     return False, f"NOT FOUND: {p}"
 
 
-def check_bakta_db(db_path: str):
-    if not db_path:
-        return None, "paths.bakta_db not set"
-    p = Path(db_path).expanduser()
-    if not p.exists():
-        return False, f"NOT FOUND: {p}"
-    missing = [f for f in BAKTA_DB_FILES if not (p / f).exists()]
-    if missing:
-        return False, f"incomplete — missing: {', '.join(missing)}"
-    return True, str(p)
-
-
-def check_checkm2_db(db_path: str):
-    if not db_path:
-        return None, "paths.checkm2_db not set"
-    p = Path(db_path).expanduser()
-    if p.exists():
-        return True, str(p)
-    return False, f"NOT FOUND: {p}"
-
-
 def check_casilico():
     try:
         r = subprocess.run(
@@ -195,6 +143,19 @@ def check_casilico():
         if "OK" in r.stdout + r.stderr:
             return True, "CaSilico loaded in R"
         return False, "CaSilico not found in R"
+    except Exception as e:
+        return False, str(e)
+
+
+def check_adapt(env: str):
+    try:
+        r = subprocess.run(
+            ["conda", "run", "-n", env,
+             "python", "-c", "import adapt; print('OK')"],
+            capture_output=True, text=True, timeout=30)
+        if "OK" in r.stdout:
+            return True, f"ADAPT available in [{env}]"
+        return False, f"ADAPT not found in [{env}]"
     except Exception as e:
         return False, str(e)
 
@@ -219,6 +180,7 @@ def main():
     org   = cfg["organism"]["display"]
     paths = cfg["paths"]
     tools = cfg["tools"]
+    conda = cfg["conda"]
 
     # Dirs
     logs_dir   = Path(paths["main"]) / "logs"
@@ -234,13 +196,13 @@ def main():
     def record(section, item, ok, info):
         if ok is True:
             status = "PASS"
-            log.info(f"  [PASS]  {item:<30}  {info}")
+            log.info(f"  [PASS]  {item:<28}  {info}")
         elif ok is False:
             status = "FAIL"
-            log.error(f"  [FAIL]  {item:<30}  {info}")
+            log.error(f"  [FAIL]  {item:<28}  {info}")
         else:
             status = "WARN"
-            log.warning(f"  [WARN]  {item:<30}  {info}")
+            log.warning(f"  [WARN]  {item:<28}  {info}")
         rows.append({"section": section, "item": item,
                      "status": status, "info": info})
 
@@ -255,57 +217,53 @@ def main():
         record("conda", env, ok, info)
 
     # ------------------------------------------------------------------
-    # 2. Tools in sherlock env
+    # 2. CLI tools
     # ------------------------------------------------------------------
     log.info("─" * 56)
-    log.info("2 · TOOLS  (sherlock env)")
+    log.info("2 · TOOLS")
     log.info("─" * 56)
     for display, exe in TOOLS.items():
         ok, info = check_tool(exe)
         record("tools", display, ok, info)
 
     # ------------------------------------------------------------------
-    # 3. Tools in external envs
+    # 3. Python packages
     # ------------------------------------------------------------------
     log.info("─" * 56)
-    log.info("3 · TOOLS  (external envs)")
-    log.info("─" * 56)
-    for display, (env, exe) in EXTERNAL_TOOLS.items():
-        ok, info = check_external_tool(env, exe)
-        record("external", display, ok, info)
-
-    # ------------------------------------------------------------------
-    # 4. Python packages
-    # ------------------------------------------------------------------
-    log.info("─" * 56)
-    log.info("4 · PYTHON PACKAGES")
+    log.info("3 · PYTHON PACKAGES")
     log.info("─" * 56)
     for display, imp in PACKAGES.items():
         ok, info = check_package(imp)
         record("python", display, ok, info)
 
     # ------------------------------------------------------------------
-    # 5. Paths and databases
+    # 4. Paths
     # ------------------------------------------------------------------
     log.info("─" * 56)
-    log.info("5 · PATHS AND DATABASES")
+    log.info("4 · PATHS")
     log.info("─" * 56)
     for key in ("project", "scripts", "main"):
         ok, info = check_dir(paths.get(key, ""))
         record("paths", key, ok, info)
-    ok, info = check_bakta_db(paths.get("bakta_db", ""))
-    record("paths", "bakta_db", ok, info)
-    ok, info = check_checkm2_db(paths.get("checkm2_db", ""))
-    record("paths", "checkm2_db", ok, info)
 
     # ------------------------------------------------------------------
-    # 6. CaSilico (R)
+    # 5. CaSilico (R)
     # ------------------------------------------------------------------
     log.info("─" * 56)
-    log.info("6 · CaSilico (R)")
+    log.info("5 · CaSilico (R)")
     log.info("─" * 56)
     ok, info = check_casilico()
     record("casilico", "CaSilico", ok, info)
+
+    # ------------------------------------------------------------------
+    # 6. ADAPT
+    # ------------------------------------------------------------------
+    log.info("─" * 56)
+    log.info("6 · ADAPT")
+    log.info("─" * 56)
+    adapt_env = conda.get("adapt", "adapt")
+    ok, info = check_adapt(adapt_env)
+    record("adapt", "ADAPT", ok, info)
 
     # ------------------------------------------------------------------
     # Summary
@@ -315,6 +273,7 @@ def main():
     n_warn = sum(1 for r in rows if r["status"] == "WARN")
     n_fail = sum(1 for r in rows if r["status"] == "FAIL")
     log.info(f"RESULT   PASS={n_pass}  WARN={n_warn}  FAIL={n_fail}")
+
     if n_fail == 0:
         log.info("All critical checks passed. Ready for M01.")
     else:
@@ -337,10 +296,10 @@ def main():
         f.write(f"SHERLOCK Pipeline — M00 Verification\n")
         f.write(f"Generated : {datetime.now()}\n")
         f.write(f"Organism  : {org}\n\n")
-        f.write(f"{'ITEM':<30}  {'STATUS':<6}  INFO\n")
+        f.write(f"{'ITEM':<28}  {'STATUS':<6}  INFO\n")
         f.write("─" * 70 + "\n")
         for r in rows:
-            f.write(f"{r['item']:<30}  {r['status']:<6}  {r['info']}\n")
+            f.write(f"{r['item']:<28}  {r['status']:<6}  {r['info']}\n")
         f.write(f"\nPASS={n_pass}  WARN={n_warn}  FAIL={n_fail}\n")
     log.info(f"Report → {txt}")
 

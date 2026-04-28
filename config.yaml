@@ -4,9 +4,8 @@
 #
 # To adapt for a different organism:
 #   1. Update [organism]
-#   2. Update [download] anchors
+#   2. Update [download] anchors + chilean_strains
 #   3. Update [classification] groups
-#   4. Update [mlst] scheme + st_to_clade
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -23,38 +22,29 @@ paths:
   project:  "/home/labinfo/sherlock"
   scripts:  "/home/labinfo/sherlock/scripts"
   main:     "/home/labinfo/sherlock/main"
-  bakta_db: "/home/labinfo/bakta_db/db"
-  checkm2_db: "/home/labinfo/checkm2_db/CheckM2_database/uniref100.KO.1.dmnd"
 
 # ---------------------------------------------------------------------------
 # CONDA ENVIRONMENTS
 # ---------------------------------------------------------------------------
 conda:
-  main:    "sherlock"
-  bakta:   "bakta"
-  checkm2: "checkm2"
-  adapt:   "adapt"
+  main:  "sherlock"
+  adapt: "adapt"
 
 # ---------------------------------------------------------------------------
-# TOOLS
+# TOOLS  (all in sherlock env unless noted)
 # ---------------------------------------------------------------------------
 tools:
   datasets:      "datasets"
-  efetch:        "efetch"
   mafft:         "mafft"
   blastn:        "blastn"
   makeblastdb:   "makeblastdb"
   bowtie2:       "bowtie2"
   bowtie2_build: "bowtie2-build"
   seqkit:        "seqkit"
-  mlst:          "mlst"
-  iqtree:        "iqtree"
   rnaplfold:     "RNAplfold"
   primer3:       "primer3_core"
   primedrpa:     "PrimedRPA"
   snakemake:     "snakemake"
-  bakta:         "bakta"
-  checkm2:       "checkm2"
 
 # ---------------------------------------------------------------------------
 # THREADS
@@ -67,15 +57,15 @@ threads:
 # M01 — GENOME DOWNLOAD
 # ---------------------------------------------------------------------------
 download:
-  assembly_level: "Complete Genome"
-  max_scaffolds:  2
-  require_gcf:    true
+  # Assembly levels to include
+  assembly_levels:
+    - "Complete Genome"
+    - "Chromosome"
+  require_gcf:    true     # for global set only (not Chilean)
   n_parallel:     4
   retries:        3
-  include_gff3:   true
-  include_fna:    true
 
-  # Anchor accessions — Chile-relevant references
+  # Anchor accessions — Chile-relevant references (always downloaded)
   # Refs: [3] Aguayo 2015 · [4] Plaza-Garrido 2016
   anchors:
     R20291_RT027:    "GCF_015732555.1"
@@ -83,6 +73,25 @@ download:
     CD630Derm_RT012: "GCF_000953275.1"
     DSM27639_RT012:  "GCF_003313565.1"
     L_NTCD03_nontox: "GCF_951803555.1"
+
+  # Chilean strains — all 12 available in NCBI (April 2026)
+  # Downloaded regardless of assembly level or GCF/GCA status
+  # Gene integrity verified via GFF flags (partial=true, pseudo=true) in M02
+  # Conflict of interest note: GCA_049907XXX deposited by Daniel Paredes-Sabja
+  # (declared in project proposal). Used as public NCBI data only.
+  chilean_strains:
+    PUC47:   "GCF_900744365.1"
+    PUC51:   "GCF_900744445.1"
+    PUC99:   "GCF_900744455.1"
+    PUC347:  "GCF_900744495.1"
+    PUC577:  "GCF_900744565.1"
+    P12:     "GCA_049907315.1"
+    PUC_256: "GCA_049907355.1"
+    ICC5:    "GCA_049907385.1"
+    PUC_606: "GCA_049907415.1"
+    P8:      "GCA_049907465.1"
+    PUC_90:  "GCA_049907515.1"
+    PUC_75:  "GCA_049907605.1"
 
 # Metadata fields for dataformat tsv genome
 metadata_fields: "accession,assminfo-name,assminfo-level,assminfo-refseq-category,assminfo-bioproject,organism-tax-id,organism-name,ani-submitted-organism,assminfo-biosample-strain,assminfo-biosample-isolate,assminfo-biosample-accession,assminfo-biosample-host,assminfo-biosample-host-disease,assminfo-biosample-isolation-source,assminfo-biosample-geo-loc-name,assminfo-biosample-lat-lon,assminfo-biosample-collection-date,assminfo-biosample-collected-by,assminfo-biosample-submission-date,assminfo-sequencing-tech,assminfo-assembly-method,assmstats-number-of-scaffolds"
@@ -97,7 +106,7 @@ metadata_cols:
   strain:     "Assembly BioSample Strain"
 
 # ---------------------------------------------------------------------------
-# M01b — UHGG  (downloaded when needed by M12)
+# M01b — UHGG  (downloaded when needed by M08)
 # ---------------------------------------------------------------------------
 uhgg:
   version:       "v2.0"
@@ -106,42 +115,12 @@ uhgg:
   exclude_cdiff: true
 
 # ---------------------------------------------------------------------------
-# M02 — QC (CheckM2 only)
-# ---------------------------------------------------------------------------
-qc:
-  min_completeness:  95.0   # % → exclusion criterion
-  max_contamination:  2.0   # % → exclusion criterion
-
-# ---------------------------------------------------------------------------
-# M03 — MLST
-# ---------------------------------------------------------------------------
-mlst:
-  scheme:       "cdifficile"
-  min_identity: 95.0
-  min_coverage: 90.0
-  st_to_clade:
-    "1":  "Clade_2"   # ST1  → RT027/NAP1  (ref [3] Chile 79%)
-    "3":  "Clade_1"   # ST3  → RT001
-    "11": "Clade_1"
-    "37": "Clade_1"   # ST37 → RT046
-    "54": "Clade_1"   # ST54 → RT012  (ref [4] Chile)
-
-# ---------------------------------------------------------------------------
-# M04 — BAKTA ANNOTATION
-# ---------------------------------------------------------------------------
-annotation:
-  threads:        8
-  min_contig_len: 200
-  complete:       true
-
-# ---------------------------------------------------------------------------
-# M05 — FUNCTIONAL CLASSIFICATION  (Groups A / B / C)
+# M02 — FUNCTIONAL CLASSIFICATION  (Groups A / B / C)
 # ---------------------------------------------------------------------------
 classification:
-  min_identity:   80.0
-  min_coverage:   70.0
-  tcdC_del_bp:    18
-  junction_flank: 20
+  # Gene presence determined from GFF (gene= field)
+  # Integrity determined from GFF flags: partial=true, pseudo=true
+  target_genes: ["tcdA", "tcdB", "tcdC", "cdtA", "cdtB", "tpiA", "sodA", "16S"]
   groups:
     A:
       required:  ["tcdA", "tcdB", "cdtA", "cdtB"]
@@ -158,23 +137,21 @@ classification:
       absent:    ["tcdA", "tcdB"]
       label:     "NonToxigenic"
       reaction:  "offtarget"
+  tcdC_del_bp:    18
+  junction_flank: 20
 
 # ---------------------------------------------------------------------------
-# M06 — PSEUDOGENE CHECK
-# ---------------------------------------------------------------------------
-pseudogene:
-  min_length_pct: 80.0   # % of reference length → flag as pseudogene if below
-  min_identity:   80.0   # % blastn identity
-
-# ---------------------------------------------------------------------------
-# M07 — SEQUENCE EXTRACTION
+# M03 — SEQUENCE EXTRACTION
 # ---------------------------------------------------------------------------
 extraction:
   utr_flank_nt: 50
   targets: ["tcdA", "tcdB", "tcdC", "cdtA", "cdtB", "tpiA", "sodA", "16S"]
+  # Only extract genes where partial=false AND pseudo=false in GFF
+  skip_partial:   true
+  skip_pseudogene: true
 
 # ---------------------------------------------------------------------------
-# M08 — MSA + CONSERVATION
+# M04 — MSA + CONSERVATION
 # ---------------------------------------------------------------------------
 alignment:
   tool:    "mafft"
@@ -184,30 +161,18 @@ alignment:
     shannon:  true
     trident:  true
     wilcoxon: true
-  adapt_mult:
-    tcdA:  ["groupA", "groupB"]
-    tcdB:  ["groupA", "groupB"]
-    tpiA:  ["groupA", "groupB", "groupC"]
-    sodA:  ["groupA", "groupB", "groupC"]
-    "16S": ["groupA", "groupB", "groupC"]
-  adapt_diff:
-    tcdC_junction:
-      on_target:  "groupA"
-      off_target: "groupB"
-    cdtA:
-      on_target:  "groupA"
-      off_target: "groupC"
 
 # ---------------------------------------------------------------------------
-# M09 — mRNA ACCESSIBILITY (RNAplfold)
+# M05 — mRNA ACCESSIBILITY (RNAplfold)
 # ---------------------------------------------------------------------------
 accessibility:
   window:  80
   span:    40
   min_acc: 0.5
+  threads: 8
 
 # ---------------------------------------------------------------------------
-# M10 — crRNA DESIGN (CaSilico + ADAPT)
+# M06 — crRNA DESIGN (CaSilico + ADAPT)
 # ---------------------------------------------------------------------------
 crna:
   spacer_len:    28
@@ -220,9 +185,18 @@ crna:
   # LwCas13a direct repeat — DO NOT CHANGE
   # Source: Gootenberg 2017 / Calderón 2024
   dr: "GGGGAUUUAGACUACCCCAAAAACGAAGGGGGGACUAAAAC"
+  # Reaction design (Option C: two reactions, LwCas13a only)
+  reaction_A:
+    targets:  ["tcdB", "tcdA", "16S"]
+    ortholog: "LwCas13a"
+    reporter: "poly-U"
+  reaction_B:
+    targets:  ["cdtA", "cdtB", "tcdC_PAN", "tcdC_RT027jct", "tpiA", "sodA"]
+    ortholog: "LwCas13a"
+    reporter: "poly-U"
 
 # ---------------------------------------------------------------------------
-# M11 — RT-RPA PRIMER CO-DESIGN (PrimedRPA)
+# M07 — RT-RPA PRIMER CO-DESIGN (PrimedRPA)
 # ---------------------------------------------------------------------------
 primers:
   len_min:      30
@@ -234,20 +208,10 @@ primers:
   gc_min:       0.40
   gc_max:       0.60
   crna_margin:  10
-  # T7 promoter — Source: Gootenberg 2017 / Calderón 2024
   t7: "AATTCTAATACGACTCACTATAGG"
-  # Option C: two reactions, both LwCas13a
-  reaction_A:
-    targets:  ["tcdB", "tcdA", "16S"]
-    ortholog: "LwCas13a"
-    reporter: "poly-U"
-  reaction_B:
-    targets:  ["cdtA", "cdtB", "tcdC_PAN", "tcdC_RT027jct", "tpiA", "sodA"]
-    ortholog: "LwCas13a"
-    reporter: "poly-U"
 
 # ---------------------------------------------------------------------------
-# M12 — SPECIFICITY
+# M08 — SPECIFICITY
 # ---------------------------------------------------------------------------
 specificity:
   reject_identity: 80.0
@@ -260,7 +224,7 @@ specificity:
   bowtie2_mm:      3
 
 # ---------------------------------------------------------------------------
-# M13 — RANKING + REPORT
+# M09 — RANKING + REPORT
 # ---------------------------------------------------------------------------
 ranking:
   top_n:      5
@@ -273,14 +237,14 @@ ranking:
     discrimination: 0.10
 
 # ---------------------------------------------------------------------------
-# M14 — SYNTHETIC CONTROLS
+# M10 — SYNTHETIC CONTROLS
 # ---------------------------------------------------------------------------
 synthetic:
   flank_nt:   100
   include_dr: true
 
 # ---------------------------------------------------------------------------
-# M15 — RT-qPCR PRIMERS (reference method)
+# M11 — RT-qPCR PRIMERS (reference method)
 # ---------------------------------------------------------------------------
 rtqpcr:
   amplicon_min: 80
@@ -290,13 +254,3 @@ rtqpcr:
   gc_min:        0.45
   gc_max:        0.65
   targets: ["tcdA", "tcdB", "tcdC", "cdtA", "tpiA", "sodA"]
-
-# ---------------------------------------------------------------------------
-# M16 — FIGURES
-# ---------------------------------------------------------------------------
-figures:
-  formats: ["svg", "pdf"]
-  dpi:     300
-  phylogeny:
-    bootstrap:    1000
-    model_select: true
