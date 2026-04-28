@@ -310,3 +310,19 @@ figures:
   phylogeny:
     bootstrap:    1000
     model_select: true
+
+# ---------------------------------------------------------------------------
+# METADATA FIELDS (dataformat tsv genome)
+# ---------------------------------------------------------------------------
+metadata_fields: "accession,assminfo-name,assminfo-level,assminfo-refseq-category,assminfo-bioproject,organism-tax-id,organism-name,ani-submitted-organism,assminfo-biosample-strain,assminfo-biosample-isolate,assminfo-biosample-accession,assminfo-biosample-host,assminfo-biosample-host-disease,assminfo-biosample-isolation-source,assminfo-biosample-geo-loc-name,assminfo-biosample-lat-lon,assminfo-biosample-collection-date,assminfo-biosample-collected-by,assminfo-biosample-submission-date,assminfo-sequencing-tech,assminfo-assembly-method,assmstats-number-of-scaffolds"
+
+# Column names in resulting TSV (used for filtering)
+metadata_cols:
+  accession:  "Assembly Accession"
+  level:      "Assembly Level"
+  scaffolds:  "Assembly Stats Number of Scaffolds"
+  geo:        "Assembly BioSample Geographic location"
+  host:       "Assembly BioSample Host"
+  isolation:  "Assembly BioSample Isolation source"
+  strain:     "Assembly BioSample Strain"
+  refseq_cat: "Assembly Refseq Category"
