@@ -1,6 +1,12 @@
 # =============================================================================
 # config.yaml — SHERLOCK crRNA Design Pipeline · v1.0
 # ~/sherlock/config.yaml
+#
+# To adapt for a different organism:
+#   1. Update [organism]
+#   2. Update [download] anchors
+#   3. Update [classification] groups
+#   4. Update [mlst] scheme + st_to_clade
 # =============================================================================
 
 # ---------------------------------------------------------------------------
@@ -14,27 +20,23 @@ organism:
 # PATHS
 # ---------------------------------------------------------------------------
 paths:
-  project:      "/home/labinfo/sherlock"
-  scripts:      "/home/labinfo/sherlock/scripts"
-  main:         "/home/labinfo/sherlock/main"
-  bakta_db:     "/home/labinfo/bakta_db/db"
-  busco_lineages: "/home/labinfo/sherlock/main/data/02_qc/busco/lineages"
+  project:  "/home/labinfo/sherlock"
+  scripts:  "/home/labinfo/sherlock/scripts"
+  main:     "/home/labinfo/sherlock/main"
+  bakta_db: "/home/labinfo/bakta_db/db"
+  checkm2_db: "/home/labinfo/checkm2_db/CheckM2_database/uniref100.KO.1.dmnd"
 
 # ---------------------------------------------------------------------------
 # CONDA ENVIRONMENTS
 # ---------------------------------------------------------------------------
 conda:
-  main:     "sherlock"
-  bakta:    "bakta"
-  checkm2:  "checkm2"
-  quast:    "quast"
-  busco:    "busco"
-  badgers:  "badgers-cas13"
-  badgers_dir: "/home/labinfo/miniconda3/envs/badgers-cas13/bin/design_guides.py"
-  adapt:    "adapt"
+  main:    "sherlock"
+  bakta:   "bakta"
+  checkm2: "checkm2"
+  adapt:   "adapt"
 
 # ---------------------------------------------------------------------------
-# TOOLS  (all in sherlock env unless noted)
+# TOOLS
 # ---------------------------------------------------------------------------
 tools:
   datasets:      "datasets"
@@ -51,12 +53,15 @@ tools:
   primer3:       "primer3_core"
   primedrpa:     "PrimedRPA"
   snakemake:     "snakemake"
-  bakta:         "bakta"           # run via conda bakta env
-  checkm2:       "checkm2"         # run via conda checkm2 env
-  quast:         "quast.py"        # run via conda quast env
-  busco:         "busco"           # run via conda busco env
-  badgers:       "/home/labinfo/miniconda3/envs/badgers-cas13/bin/design_guides.py"
-  casilico:      "Rscript"         # CaSilico via R
+  bakta:         "bakta"
+  checkm2:       "checkm2"
+
+# ---------------------------------------------------------------------------
+# THREADS
+# ---------------------------------------------------------------------------
+threads:
+  default: 8
+  max:     16
 
 # ---------------------------------------------------------------------------
 # M01 — GENOME DOWNLOAD
@@ -70,6 +75,8 @@ download:
   include_gff3:   true
   include_fna:    true
 
+  # Anchor accessions — Chile-relevant references
+  # Refs: [3] Aguayo 2015 · [4] Plaza-Garrido 2016
   anchors:
     R20291_RT027:    "GCF_015732555.1"
     CD196_RT027:     "GCF_021378415.1"
@@ -77,15 +84,17 @@ download:
     DSM27639_RT012:  "GCF_003313565.1"
     L_NTCD03_nontox: "GCF_951803555.1"
 
-  ref_genes:
-    tcdA: "KF800788"
-    tcdB: "KF800789"
-    tcdC: "KF800790"
-    cdtA: "AY187778"
-    cdtB: "AY187779"
-    tpiA: "GQ500445"
-    sodA: "GQ500453"
-    16S:  "NR_102783"
+# Metadata fields for dataformat tsv genome
+metadata_fields: "accession,assminfo-name,assminfo-level,assminfo-refseq-category,assminfo-bioproject,organism-tax-id,organism-name,ani-submitted-organism,assminfo-biosample-strain,assminfo-biosample-isolate,assminfo-biosample-accession,assminfo-biosample-host,assminfo-biosample-host-disease,assminfo-biosample-isolation-source,assminfo-biosample-geo-loc-name,assminfo-biosample-lat-lon,assminfo-biosample-collection-date,assminfo-biosample-collected-by,assminfo-biosample-submission-date,assminfo-sequencing-tech,assminfo-assembly-method,assmstats-number-of-scaffolds"
+
+# Column names in TSV (used for filtering)
+metadata_cols:
+  accession:  "Assembly Accession"
+  level:      "Assembly Level"
+  scaffolds:  "Assembly Stats Number of Scaffolds"
+  geo:        "Assembly BioSample Geographic location"
+  host:       "Assembly BioSample Host"
+  strain:     "Assembly BioSample Strain"
 
 # ---------------------------------------------------------------------------
 # M01b — UHGG  (downloaded when needed by M12)
@@ -97,16 +106,11 @@ uhgg:
   exclude_cdiff: true
 
 # ---------------------------------------------------------------------------
-# M02 — QC
+# M02 — QC (CheckM2 only)
 # ---------------------------------------------------------------------------
 qc:
-  min_completeness:  95.0
-  max_contamination:  2.0
-  min_n50:          100000
-  busco_primary:    "clostridia_odb10"
-  busco_secondary:  "clostridiales_odb10"
-  busco_min_pct:    90.0
-  run_busco:        true
+  min_completeness:  95.0   # % → exclusion criterion
+  max_contamination:  2.0   # % → exclusion criterion
 
 # ---------------------------------------------------------------------------
 # M03 — MLST
@@ -116,14 +120,14 @@ mlst:
   min_identity: 95.0
   min_coverage: 90.0
   st_to_clade:
-    "1":  "Clade_2"
-    "3":  "Clade_1"
+    "1":  "Clade_2"   # ST1  → RT027/NAP1  (ref [3] Chile 79%)
+    "3":  "Clade_1"   # ST3  → RT001
     "11": "Clade_1"
-    "37": "Clade_1"
-    "54": "Clade_1"
+    "37": "Clade_1"   # ST37 → RT046
+    "54": "Clade_1"   # ST54 → RT012  (ref [4] Chile)
 
 # ---------------------------------------------------------------------------
-# M04 — BAKTA
+# M04 — BAKTA ANNOTATION
 # ---------------------------------------------------------------------------
 annotation:
   threads:        8
@@ -131,7 +135,7 @@ annotation:
   complete:       true
 
 # ---------------------------------------------------------------------------
-# M05 — CLASSIFICATION  (Groups A / B / C)
+# M05 — FUNCTIONAL CLASSIFICATION  (Groups A / B / C)
 # ---------------------------------------------------------------------------
 classification:
   min_identity:   80.0
@@ -156,15 +160,21 @@ classification:
       reaction:  "offtarget"
 
 # ---------------------------------------------------------------------------
-# M06 — EXTRACTION
+# M06 — PSEUDOGENE CHECK
+# ---------------------------------------------------------------------------
+pseudogene:
+  min_length_pct: 80.0   # % of reference length → flag as pseudogene if below
+  min_identity:   80.0   # % blastn identity
+
+# ---------------------------------------------------------------------------
+# M07 — SEQUENCE EXTRACTION
 # ---------------------------------------------------------------------------
 extraction:
   utr_flank_nt: 50
-  targets: ["tcdA", "tcdB", "tcdC", "cdtA", "cdtB",
-            "tpiA", "sodA", "16S"]
+  targets: ["tcdA", "tcdB", "tcdC", "cdtA", "cdtB", "tpiA", "sodA", "16S"]
 
 # ---------------------------------------------------------------------------
-# M07 — ALIGNMENT + CONSERVATION
+# M08 — MSA + CONSERVATION
 # ---------------------------------------------------------------------------
 alignment:
   tool:    "mafft"
@@ -174,13 +184,13 @@ alignment:
     shannon:  true
     trident:  true
     wilcoxon: true
-  badgers_mult:
+  adapt_mult:
     tcdA:  ["groupA", "groupB"]
     tcdB:  ["groupA", "groupB"]
     tpiA:  ["groupA", "groupB", "groupC"]
     sodA:  ["groupA", "groupB", "groupC"]
     "16S": ["groupA", "groupB", "groupC"]
-  badgers_diff:
+  adapt_diff:
     tcdC_junction:
       on_target:  "groupA"
       off_target: "groupB"
@@ -189,7 +199,7 @@ alignment:
       off_target: "groupC"
 
 # ---------------------------------------------------------------------------
-# M08 — mRNA ACCESSIBILITY
+# M09 — mRNA ACCESSIBILITY (RNAplfold)
 # ---------------------------------------------------------------------------
 accessibility:
   window:  80
@@ -197,7 +207,7 @@ accessibility:
   min_acc: 0.5
 
 # ---------------------------------------------------------------------------
-# M09 — crRNA DESIGN  (CaSilico)
+# M10 — crRNA DESIGN (CaSilico + ADAPT)
 # ---------------------------------------------------------------------------
 crna:
   spacer_len:    28
@@ -207,10 +217,12 @@ crna:
   mfe_max:       -5.0
   slide_step:    1
   junction_mode: true
+  # LwCas13a direct repeat — DO NOT CHANGE
+  # Source: Gootenberg 2017 / Calderón 2024
   dr: "GGGGAUUUAGACUACCCCAAAAACGAAGGGGGGACUAAAAC"
 
 # ---------------------------------------------------------------------------
-# M10 — RT-RPA PRIMERS
+# M11 — RT-RPA PRIMER CO-DESIGN (PrimedRPA)
 # ---------------------------------------------------------------------------
 primers:
   len_min:      30
@@ -222,7 +234,9 @@ primers:
   gc_min:       0.40
   gc_max:       0.60
   crna_margin:  10
+  # T7 promoter — Source: Gootenberg 2017 / Calderón 2024
   t7: "AATTCTAATACGACTCACTATAGG"
+  # Option C: two reactions, both LwCas13a
   reaction_A:
     targets:  ["tcdB", "tcdA", "16S"]
     ortholog: "LwCas13a"
@@ -231,14 +245,6 @@ primers:
     targets:  ["cdtA", "cdtB", "tcdC_PAN", "tcdC_RT027jct", "tpiA", "sodA"]
     ortholog: "LwCas13a"
     reporter: "poly-U"
-
-# ---------------------------------------------------------------------------
-# M11 — BADGERS
-# ---------------------------------------------------------------------------
-badgers:
-  algorithm:    "wgan-am"
-  mult_targets: ["tcdA", "tcdB", "tpiA", "sodA", "16S"]
-  diff_targets: ["tcdC_junction", "cdtA"]
 
 # ---------------------------------------------------------------------------
 # M12 — SPECIFICITY
@@ -254,33 +260,17 @@ specificity:
   bowtie2_mm:      3
 
 # ---------------------------------------------------------------------------
-# M13 — RANKING
+# M13 — RANKING + REPORT
 # ---------------------------------------------------------------------------
 ranking:
   top_n:      5
   report_fmt: "html"
   weights:
-    badgers_score:  0.35
+    adapt_score:    0.35
     accessibility:  0.20
     conservation:   0.20
     specificity:    0.15
     discrimination: 0.10
-
-# ---------------------------------------------------------------------------
-# M13b — MONTE CARLO LOD
-# ---------------------------------------------------------------------------
-lod:
-  n_simulations:  10000
-  kcat_mean:      1300.0
-  kcat_cv:           0.15
-  km_mean:           5.0
-  km_cv:             0.20
-  rpa_eff_mean:      0.95
-  rpa_eff_cv:        0.10
-  reporter_conc:   500.0
-  reaction_vol:     20.0
-  detect_thresh:     1.0
-  copies_range: [1, 1000000]
 
 # ---------------------------------------------------------------------------
 # M14 — SYNTHETIC CONTROLS
@@ -290,7 +280,7 @@ synthetic:
   include_dr: true
 
 # ---------------------------------------------------------------------------
-# M15 — RT-qPCR
+# M15 — RT-qPCR PRIMERS (reference method)
 # ---------------------------------------------------------------------------
 rtqpcr:
   amplicon_min: 80
@@ -302,7 +292,7 @@ rtqpcr:
   targets: ["tcdA", "tcdB", "tcdC", "cdtA", "tpiA", "sodA"]
 
 # ---------------------------------------------------------------------------
-# M17 — FIGURES
+# M16 — FIGURES
 # ---------------------------------------------------------------------------
 figures:
   formats: ["svg", "pdf"]
@@ -310,19 +300,3 @@ figures:
   phylogeny:
     bootstrap:    1000
     model_select: true
-
-# ---------------------------------------------------------------------------
-# METADATA FIELDS (dataformat tsv genome)
-# ---------------------------------------------------------------------------
-metadata_fields: "accession,assminfo-name,assminfo-level,assminfo-refseq-category,assminfo-bioproject,organism-tax-id,organism-name,ani-submitted-organism,assminfo-biosample-strain,assminfo-biosample-isolate,assminfo-biosample-accession,assminfo-biosample-host,assminfo-biosample-host-disease,assminfo-biosample-isolation-source,assminfo-biosample-geo-loc-name,assminfo-biosample-lat-lon,assminfo-biosample-collection-date,assminfo-biosample-collected-by,assminfo-biosample-submission-date,assminfo-sequencing-tech,assminfo-assembly-method,assmstats-number-of-scaffolds"
-
-# Column names in resulting TSV (used for filtering)
-metadata_cols:
-  accession:  "Assembly Accession"
-  level:      "Assembly Level"
-  scaffolds:  "Assembly Stats Number of Scaffolds"
-  geo:        "Assembly BioSample Geographic location"
-  host:       "Assembly BioSample Host"
-  isolation:  "Assembly BioSample Isolation source"
-  strain:     "Assembly BioSample Strain"
-  refseq_cat: "Assembly Refseq Category"
