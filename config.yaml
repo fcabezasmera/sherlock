@@ -199,6 +199,7 @@ crna:
 # M07 — RT-RPA PRIMER CO-DESIGN (PrimedRPA)
 # ---------------------------------------------------------------------------
 primers:
+  rpa_env:     "RPA"
   len_min:      30
   len_max:      35
   amplicon_min: 100

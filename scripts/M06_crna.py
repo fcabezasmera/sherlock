@@ -202,6 +202,7 @@ def parse_adapt(tsv_path: Path) -> pd.DataFrame:
         "guide-set-expected-activity":"adapt_activity",
         "guide-expected-activities":  "adapt_activity_raw",
         "total-frac-bound":           "adapt_frac_bound",
+        "target-sequence-positions":  "guide_pos_in_window",
     }
     df = df.rename(columns={k: v for k, v in rename.items()
                              if k in df.columns})
@@ -212,6 +213,22 @@ def parse_adapt(tsv_path: Path) -> pd.DataFrame:
     df["adapt_activity"]   = pd.to_numeric(df["adapt_activity"],   errors="coerce")
     df["adapt_frac_bound"] = pd.to_numeric(df.get("adapt_frac_bound",
                                                     pd.Series()), errors="coerce")
+
+    # Extract real crRNA position: window_start + position_within_window
+    # ADAPT reports position as {N} e.g. {188}
+    def extract_pos(s):
+        try:
+            return int(str(s).strip("{}").split(",")[0])
+        except Exception:
+            return 0
+
+    if "guide_pos_in_window" in df.columns:
+        df["guide_pos_in_window"] = df["guide_pos_in_window"].apply(extract_pos)
+        df["crna_position"] = (pd.to_numeric(df["window_start"], errors="coerce")
+                               + df["guide_pos_in_window"])
+    else:
+        df["crna_position"] = pd.to_numeric(df["window_start"], errors="coerce")
+
     return df
 
 
@@ -276,6 +293,8 @@ def rank_candidates(adapt_df: pd.DataFrame,
             "guide_seq":       seq,
             "window_start":    int(row.get("window_start", 0)),
             "window_end":      int(row.get("window_end", 0)),
+            "crna_position":   int(row.get("crna_position",
+                               row.get("window_start", 0))),
             "adapt_activity":  float(row.get("adapt_activity", float("nan"))),
             "adapt_frac_bound":float(row.get("adapt_frac_bound", float("nan"))),
             "accessibility":   acc,
