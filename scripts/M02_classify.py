@@ -52,6 +52,18 @@ THREADS        = 8   # change to 16 for maximum
 TARGET_GENES = ["tcdA", "tcdB", "tcdC", "cdtA", "cdtB",
                 "tpiA", "sodA", "16S"]
 
+# Genes not annotated with gene= attribute in GFF
+# Search by product= keyword instead
+GENE_PRODUCT_ALIASES = {
+    "sodA": ["superoxide dismutase"],
+    "16S":  ["16S ribosomal RNA"],
+}
+
+# Accepted GFF feature types per gene (default: CDS, gene, pseudogene)
+GENE_FEATURE_TYPES = {
+    "16S": ["rRNA", "exon"],
+}
+
 # tcdC deletion detection
 TDCC_DEL_BP     = 18    # canonical RT027 deletion
 JUNCTION_FLANK  = 20    # nt flanking the deletion site
@@ -122,30 +134,38 @@ def parse_gff_genes(gff_path: Path, target_genes: list) -> dict:
                     continue
 
                 feature_type = parts[2]
-                if feature_type not in ("gene", "CDS", "pseudogene"):
-                    continue
-
                 attrs = parts[8]
 
-                # Extract gene name
-                gene_match = re.search(r'(?:^|;)gene=([^;]+)', attrs)
-                if not gene_match:
-                    # Try Name= as fallback
-                    gene_match = re.search(r'(?:^|;)Name=([^;]+)', attrs)
-                if not gene_match:
-                    continue
-
-                gene_name = gene_match.group(1).strip()
-
-                # Check if this gene is in our target list
-                # Case-insensitive matching
                 matched = None
+
+                # Check each target gene
                 for tg in target_genes:
-                    if gene_name.lower() == tg.lower():
-                        matched = tg
-                        break
+                    accepted = GENE_FEATURE_TYPES.get(tg,
+                               ["gene", "CDS", "pseudogene"])
+                    if feature_type not in accepted:
+                        continue
+
+                    # Try gene= attribute
+                    gene_match = re.search(r'(?:^|;)gene=([^;]+)', attrs)
+                    if gene_match:
+                        if gene_match.group(1).strip().lower() == tg.lower():
+                            matched = tg
+                            break
+
+                    # Try product= aliases
+                    aliases = GENE_PRODUCT_ALIASES.get(tg, [])
+                    if aliases:
+                        prod_match = re.search(r'product=([^;]+)', attrs)
+                        if prod_match:
+                            prod = prod_match.group(1).strip().lower()
+                            if any(a.lower() in prod for a in aliases):
+                                matched = tg
+                                break
+
                 if not matched:
                     continue
+
+                gene_name = matched
 
                 # Check partial and pseudo flags
                 is_partial = "partial=true" in attrs.lower()
