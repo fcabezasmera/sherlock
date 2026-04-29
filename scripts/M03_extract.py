@@ -142,19 +142,25 @@ def parse_gene_coords(gff_path: Path, gene_name: str,
 
                 # Try gene= attribute first
                 matched = False
-                gene_match = re.search(r'(?:^|;)gene=([^;]+)', attrs)
-                if gene_match:
-                    if gene_match.group(1).strip().lower() == gene_name.lower():
+                # 1. Try gene= attribute
+                gm = re.search(r'(?:^|;)gene=([^;]+)', attrs)
+                if gm and gm.group(1).strip().lower() == gene_name.lower():
+                    matched = True
+                # 2. Try Name= attribute (e.g. Name=rpoB)
+                if not matched:
+                    nm = re.search(r'(?:^|;)Name=([^;]+)', attrs)
+                    if nm and nm.group(1).strip().lower() == gene_name.lower():
                         matched = True
-
-                # Try product= aliases as fallback
+                # 3. Try product= exact match (fallback for unannotated gene=)
                 if not matched and aliases:
-                    product_match = re.search(r'product=([^;]+)', attrs)
-                    if product_match:
-                        product = product_match.group(1).strip().lower()
-                        if any(alias.lower() in product for alias in aliases):
-                            matched = True
-
+                    # Only use product= if no explicit gene= pointing elsewhere
+                    other_gene = re.search(r'(?:^|;)gene=([^;]+)', attrs)
+                    if not other_gene or other_gene.group(1).strip().lower() == gene_name.lower():
+                        pm = re.search(r'product=([^;]+)', attrs)
+                        if pm:
+                            prod = pm.group(1).strip().lower()
+                            if any(alias.lower() == prod for alias in aliases):
+                                matched = True
                 if not matched:
                     continue
 
@@ -304,6 +310,11 @@ def extract_gene_for_group(gene: str, group: str,
         # Check gene status in matrix
         row = gene_matrix.get(acc, {})
         status = row.get(gene, "ABSENT")
+        # Housekeeping genes (rpoB, tpiA) are not in gene_matrix —
+        # assume COMPLETE for all accessions in the group
+        HOUSEKEEPING = {"rpoB", "tpiA", "sodA"}
+        if gene in HOUSEKEEPING:
+            status = "COMPLETE"
         if status != "COMPLETE":
             continue  # skip PARTIAL, PSEUDOGENE, ABSENT
 

@@ -5,9 +5,27 @@
 DEFAULT_CONFIG = "~/sherlock/config.yaml"
 TOP_N = 5
 WEIGHTS = {"adapt":0.35,"accessibility":0.20,"conservation":0.20,"specificity":0.15,"primer":0.10}
-TARGETS = ["tcdA_all","tcdB_clade2","tcdC_wt","tcdC_junction","cdtA_groupA","cdtB_groupA","tpiA_all","rpoB_all","rpoB_all"]
-REACTION_MAP = {"tcdB_clade2":"A","tcdA_all":"A","rpoB_all":"A","cdtA_groupA":"B","cdtB_groupA":"B","tcdC_wt":"B","tcdC_junction":"B","tpiA_all":"B","rpoB_all":"B"}
-TARGET_LABELS = {"tcdA_all":"tcdA","tcdB_clade2":"tcdB","tcdC_wt":"tcdC (WT)","tcdC_junction":"tcdC (RT027 jct)","cdtA_groupA":"cdtA","cdtB_groupA":"cdtB","tpiA_all":"tpiA","rpoB_all":"sodA","rpoB_all":"16S rRNA"}
+TARGETS = [
+    "tcdA_all", "tcdB_clade2", "tcdB_clade1",
+    "tcdC_wt", "tcdC_junction",
+    "cdtA_groupA", "cdtB_groupA",
+    "tpiA_all", "rpoB_all",
+]
+REACTION_MAP = {
+    "tcdA_all":"A","tcdB_clade2":"A","tcdB_clade1":"A","rpoB_all":"A",
+    "tcdC_wt":"B","tcdC_junction":"B",
+    "cdtA_groupA":"B","cdtB_groupA":"B","tpiA_all":"B",
+}
+TARGET_LABELS = {
+    "tcdA_all":"tcdA",
+    "tcdB_clade2":"tcdB (clade 2, RT027)",
+    "tcdB_clade1":"tcdB (clade 1, RT012)",
+    "tcdC_wt":"tcdC (WT)",
+    "tcdC_junction":"tcdC (RT027 jct)",
+    "cdtA_groupA":"cdtA",
+    "cdtB_groupA":"cdtB",
+    "tpiA_all":"tpiA",
+    "rpoB_all":"rpoB"}
 DR_RNA = "GGGGAUUUAGACUACCCCAAAAACGAAGGGGGGACUAAAAC"
 T7_DNA = "AATTCTAATACGACTCACTATAGG"
 
@@ -255,8 +273,8 @@ ol,ul{{font-size:13px;color:#546E7A}}li{{margin:4px 0}}
 <h1>SHERLOCK crRNA Design Report — {org}</h1>
 <p style="color:#546E7A"><b>Generated:</b> {now} &nbsp;|&nbsp; <b>Pipeline v1.0</b></p>
 <div class="ib">
-<b>Reaction A</b> (LwCas13a): tcdB + tcdA + 16S rRNA (internal extraction control)<br>
-<b>Reaction B</b> (LwCas13a): cdtA + cdtB + tcdC_WT + tcdC_RT027_junction + tpiA + sodA<br><br>
+<b>Reaction A</b> (LwCas13a): tcdA + tcdB clade2 + tcdB clade1 + rpoB (species control)<br>
+    <b>Reaction B</b> (LwCas13a): tcdC_WT + tcdC_RT027_junction + cdtA + cdtB + tpiA<br><br>
 Each row = co-designed set: RT-RPA primer pair + crRNA validated to co-localize within the same amplicon.<br>
 Ranking weights: ADAPT activity 35% · Conservation 20% · Specificity 15% · Primer co-design 10%
 </div>
@@ -339,7 +357,7 @@ def main():
     print_logo("M09 · Ranking + Report", organism=org)
     save_versions(tools={}, python_pkgs=["pandas","numpy"], report_dir=report_dir, log=log)
 
-    qpcr_genes  = cfg.get("rtqpcr",{}).get("targets",["tcdA","tcdB","tcdC","cdtA","cdtB","tpiA","sodA"])
+    qpcr_genes  = cfg.get("rtqpcr",{}).get("targets",["tcdA","tcdB_clade1","tcdB_clade2","tcdC","cdtA","cdtB","tpiA","rpoB"])
     rtqpcr_data = {g: load_tsv(rtqpcr_dir / f"{g}_primers.tsv") for g in qpcr_genes}
 
     all_ranked, summary_rows = [], []

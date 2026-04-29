@@ -318,13 +318,8 @@ def rank_candidates(adapt_df: pd.DataFrame,
     # Biological filters
     df_pass = df[df["filter_pass"]].copy()
 
-    # Accessibility filter (skip if no profile available)
-    if not acc_df.empty:
-        df_pass = df_pass[
-            df_pass["accessibility"].isna() |
-            (df_pass["accessibility"] >= min_acc)
-        ].copy()
-
+    # Accessibility used in scoring only — no hard cutoff with -u 28
+    # (absolute values ~0.01-0.03 with window=28; relative ranking used instead)
     if df_pass.empty:
         log.warning(f"  {target}: no candidates passed filters")
         return pd.DataFrame()

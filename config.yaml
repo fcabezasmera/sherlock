@@ -169,7 +169,7 @@ accessibility:
   window:  80
   span:    40
   u_window: 28    # spacer length — R3 fix (was 1)
-  min_acc: 0.5
+  min_acc: 0.01    # adjusted for -u 28 (Lorenz 2011); use relative ranking
   threads: 8
 
 # ---------------------------------------------------------------------------

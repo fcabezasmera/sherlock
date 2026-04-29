@@ -166,7 +166,7 @@ def main():
 
     for _, row in df.iterrows():
         target    = str(row["target"])
-        guide_seq = str(row["guide_seq"])  # RNA spacer (U not T)
+        guide_seq = str(row.get("guide_seq_rna", row.get("guide_seq", "")))  # RNA spacer (U not T)
         rank      = int(row["rank"])
 
         # Ensure RNA format

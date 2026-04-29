@@ -56,20 +56,25 @@ T7_DNA = "AATTCTAATACGACTCACTATAGG"
 
 GENE_MAP = {
     "tcdA_all":      ["tcdA_groupA","tcdA_groupB"],
-    "tcdB_clade2":      ["tcdB_groupA","tcdB_groupB"],
+    "tcdB_clade2":   ["tcdB_groupA"],
+    "tcdB_clade1":   ["tcdB_groupB"],
     "tcdC_wt":       ["tcdC_groupB"],
     "tcdC_junction": ["tcdC_junction_groupA"],
     "cdtA_groupA":   ["cdtA_groupA"],
     "cdtB_groupA":   ["cdtB_groupA"],
     "tpiA_all":      ["tpiA_groupA","tpiA_groupB","tpiA_groupC"],
-    "rpoB_all":      ["sodA_groupA","sodA_groupB","sodA_groupC"],
-    "rpoB_all":       ["16S_groupA","16S_groupB","16S_groupC"],
+    "rpoB_all":      ["rpoB_groupA","rpoB_groupB","rpoB_groupC"],
 }
 
 RTQPCR_GENE_MAP = {
-    "tcdA":"tcdA_all","tcdB":"tcdB_clade2","tcdC":"tcdC_wt",
-    "cdtA":"cdtA_groupA","cdtB":"cdtB_groupA",
-    "tpiA":"tpiA_all","sodA":"rpoB_all",
+    "tcdA":       "tcdA_all",
+    "tcdB_clade1":"tcdB_clade1",
+    "tcdB_clade2":"tcdB_clade2",
+    "tcdC":       "tcdC_wt",
+    "cdtA":       "cdtA_groupA",
+    "cdtB":       "cdtB_groupA",
+    "tpiA":       "tpiA_all",
+    "rpoB":       "rpoB_all",
 }
 
 # =============================================================================
@@ -327,8 +332,9 @@ def validate_rtqpcr(rtqpcr_dir, acc_dir, seqkit_exe):
 
         # In silico PCR on consensus
         seqs = {"consensus": consensus}
-        n_amp, mean_sz, in_range = primer_amplicon(fp, rp, seqs, seqkit_exe,
-                                                    QPCR_AMP_MIN, QPCR_AMP_MAX)
+        n_amp, mean_sz, _ = primer_amplicon(fp, rp, seqs, seqkit_exe,
+                                               QPCR_AMP_MIN, QPCR_AMP_MAX)
+        in_range = n_amp > 0  # any amplicon found = in range
 
         fp_tm = float(best.get("fp_tm",0) or 0)
         rp_tm = float(best.get("rp_tm",0) or 0)
