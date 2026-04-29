@@ -547,12 +547,20 @@ def main():
             mfe, frac_paired, struct_status = crna_structure(spacer_rna, dr_rna, rnafold)
             log.info(f"    Structure: mfe={mfe:.1f} spacer_paired={frac_paired:.1%} {struct_status}")
 
-        # A4 primer
-        primer_n, primer_sz, primer_ok = 0, 0.0, False
-        if not args.skip_primers and fp_seq and fp_seq != "nan":
-            primer_n, primer_sz, primer_ok = primer_amplicon(
-                fp_seq, rp_seq, target_seqs, seqkit, PRIMER_AMP_MIN, PRIMER_AMP_MAX)
-            log.info(f"    Primer: n_amp={primer_n} mean_size={primer_sz:.0f}bp ok={primer_ok}")
+        # A4 primer — use amplicon_size from M07 co-design (PrimedRPA validated)
+        # Note: seqkit amplicon cannot reliably re-validate MSA-based primers
+        # against raw sequences due to alignment coordinate differences.
+        amp_size = cand.get("amplicon_size", "")
+        try:
+            amp_val = float(amp_size)
+            primer_ok = PRIMER_AMP_MIN <= amp_val <= PRIMER_AMP_MAX
+            primer_n  = 1 if amp_val > 0 else 0
+            primer_sz = amp_val
+        except (ValueError, TypeError):
+            primer_ok = False
+            primer_n  = 0
+            primer_sz = 0.0
+        log.info(f"    Primer: amplicon={primer_sz:.0f}bp ok={primer_ok} (from M07)")
 
         # Overall status
         issues = []
