@@ -2,22 +2,29 @@
 """
 M09_report.py
 SHERLOCK crRNA Design Pipeline · v1.0
-Module : M09 · Ranking + HTML Report
+Module : M09 · Ranking + Comprehensive HTML Report
 
 PURPOSE
-    Integrate results from M06 (crRNA design), M07 (RT-RPA primers),
-    and M08 (specificity) into a final ranked candidate table.
+    Integrate M06 (crRNA), M07 (RT-RPA primers), M08 (specificity)
+    into a final ranked candidate table with all sequences needed
+    for experimental implementation.
 
-    Ranking composite score:
-      - ADAPT activity score     (0.35) — predicted Cas13a activity
-      - Accessibility score      (0.20) — mRNA unpaired probability
-      - Conservation score       (0.20) — Shannon entropy (inverted)
-      - Specificity bonus        (0.15) — pass all specificity checks
-      - Primer co-design bonus   (0.10) — has matched RT-RPA primer set
+    Sequence conventions (Kellner et al. 2019, Nat Protoc):
+      - crRNA spacer: complementary to target RNA (sense strand)
+      - LwCas13a: DR is 5' of spacer
+      - For IVT synthesis: order RC(T7 + DR_DNA + spacer_DNA)
+      - RPA forward primer: 5' T7 + FP sequence 3'
+      - RPA reverse primer: 5' RP sequence 3' (no T7)
 
-    Outputs:
-      - TSV ranking per target + combined
-      - HTML report with interactive table
+    Report includes:
+      - crRNA spacer sequence (RNA, 5'→3')
+      - Full crRNA = DR + spacer (RNA)
+      - IVT template DNA = RC(T7 + DR + spacer) → order to IDT
+      - RPA FP with T7, RPA RP
+      - RT-qPCR primers (from M11)
+      - Specificity results per database
+      - ADAPT activity, accessibility, conservation scores
+      - Pipeline parameters and database versions
 
 USAGE
     conda activate sherlock
@@ -26,6 +33,8 @@ USAGE
 OUTPUT
     main/data/09_report/final_ranking.tsv
     main/data/09_report/final_ranking.html
+    main/data/09_report/IDT_order_crRNA.tsv    → order to IDT
+    main/data/09_report/IDT_order_primers.tsv  → RPA + qPCR primers
     main/logs/M09_report.log
     main/reports/M09_report/summary.tsv
     main/reports/M09_report/DONE.txt
@@ -36,41 +45,32 @@ OUTPUT
 # =============================================================================
 
 DEFAULT_CONFIG = "~/sherlock/config.yaml"
-TOP_N          = 5   # top candidates per target in final ranking
+TOP_N          = 5
 
-# Weights for composite score
 WEIGHTS = {
-    "adapt":        0.35,
-    "accessibility":0.20,
-    "conservation": 0.20,
-    "specificity":  0.15,
-    "primer":       0.10,
+    "adapt":         0.35,
+    "accessibility": 0.20,
+    "conservation":  0.20,
+    "specificity":   0.15,
+    "primer":        0.10,
 }
 
 TARGETS = [
-    "tcdA_all",
-    "tcdB_all",
-    "tcdC_wt",
-    "tcdC_junction",
-    "cdtA_groupA",
-    "cdtB_groupA",
-    "tpiA_all",
-    "sodA_all",
-    "16S_all",
+    "tcdA_all", "tcdB_all", "tcdC_wt", "tcdC_junction",
+    "cdtA_groupA", "cdtB_groupA", "tpiA_all", "sodA_all", "16S_all",
 ]
 
-# Reaction assignment per target
 REACTION_MAP = {
-    "tcdB_all":       "A",
-    "tcdA_all":       "A",
-    "16S_all":        "A",
-    "cdtA_groupA":    "B",
-    "cdtB_groupA":    "B",
-    "tcdC_wt":        "B",
-    "tcdC_junction":  "B",
-    "tpiA_all":       "B",
-    "sodA_all":       "B",
+    "tcdB_all": "A", "tcdA_all": "A", "16S_all": "A",
+    "cdtA_groupA": "B", "cdtB_groupA": "B",
+    "tcdC_wt": "B", "tcdC_junction": "B",
+    "tpiA_all": "B", "sodA_all": "B",
 }
+
+# LwCas13a DR (DNA for IVT template ordering)
+DR_DNA = "GGGGATTTAGA CTACCCCAAAAACGAAGGGGGGACTAAAAC".replace(" ", "")
+DR_RNA = "GGGGAUUUAGACUACCCCAAAAACGAAGGGGGGACUAAAAC"
+T7_DNA = "AATTCTAATACGACTCACTATAGG"
 
 # =============================================================================
 # IMPORTS
@@ -86,60 +86,74 @@ import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).parent))
 from pipeline_utils import (
-    load_config,
-    get_logger,
-    print_logo,
-    save_versions,
-    write_tsv,
-    write_checkpoint,
+    load_config, get_logger, print_logo,
+    save_versions, write_tsv, write_checkpoint,
 )
 
 # =============================================================================
-# LOAD DATA
+# SEQUENCE UTILITIES
 # =============================================================================
 
-def load_candidates(crna_dir: Path, target: str) -> pd.DataFrame:
-    """Load M06 crRNA candidates for a target."""
+def reverse_complement(seq: str) -> str:
+    comp = {"A":"T","T":"A","G":"C","C":"G","U":"A","N":"N"}
+    return "".join(comp.get(b.upper(), "N") for b in seq[::-1])
+
+
+def rna_to_dna(seq: str) -> str:
+    return seq.upper().replace("U", "T")
+
+
+def dna_to_rna(seq: str) -> str:
+    return seq.upper().replace("T", "U")
+
+
+def make_ivt_template(spacer_rna: str, dr_dna: str, t7: str) -> str:
+    """
+    IVT template DNA for crRNA (Kellner et al. 2019):
+    RC( T7 + DR_DNA + spacer_DNA )
+    Ordered to IDT as ssDNA Ultramer.
+    When T7 transcribes, produces: DR_RNA + spacer_RNA = functional crRNA.
+    """
+    spacer_dna = rna_to_dna(spacer_rna)
+    full_sense = t7 + dr_dna + spacer_dna
+    return reverse_complement(full_sense)
+
+
+def make_full_crna(spacer_rna: str, dr_rna: str) -> str:
+    """Full crRNA RNA sequence: DR + spacer."""
+    return dr_rna + spacer_rna
+
+
+# =============================================================================
+# DATA LOADERS
+# =============================================================================
+
+def load_candidates(crna_dir, target):
     f = crna_dir / f"{target}_candidates.tsv"
-    if not f.exists():
-        return pd.DataFrame()
-    return pd.read_csv(f, sep="\t")
+    return pd.read_csv(f, sep="\t") if f.exists() else pd.DataFrame()
 
-
-def load_specificity(sp_dir: Path, target: str) -> pd.DataFrame:
-    """Load M08 specificity results for a target."""
+def load_specificity(sp_dir, target):
     f = sp_dir / f"{target}_specificity.tsv"
-    if not f.exists():
-        return pd.DataFrame()
-    return pd.read_csv(f, sep="\t")
+    return pd.read_csv(f, sep="\t") if f.exists() else pd.DataFrame()
 
-
-def load_conservation(cons_dir: Path, target: str) -> pd.DataFrame:
-    """Load M04 conservation metrics for a target."""
+def load_conservation(cons_dir, target):
     f = cons_dir / f"{target}_conservation.tsv"
-    if not f.exists():
-        return pd.DataFrame()
-    return pd.read_csv(f, sep="\t")
+    return pd.read_csv(f, sep="\t") if f.exists() else pd.DataFrame()
 
-
-def load_codesign(primers_dir: Path, target: str) -> pd.DataFrame:
-    """Load M07 co-design results for a target."""
+def load_codesign(primers_dir, target):
     f = primers_dir / f"{target}_codesign.tsv"
-    if not f.exists():
-        return pd.DataFrame()
-    return pd.read_csv(f, sep="\t")
+    return pd.read_csv(f, sep="\t") if f.exists() else pd.DataFrame()
+
+def load_rtqpcr(rtqpcr_dir, gene):
+    f = rtqpcr_dir / f"{gene}_primers.tsv"
+    return pd.read_csv(f, sep="\t") if f.exists() else pd.DataFrame()
 
 
 # =============================================================================
-# RANKING
+# CONSERVATION SCORE
 # =============================================================================
 
-def get_conservation_score(cons_df: pd.DataFrame,
-                            crna_position: int) -> float:
-    """
-    Get conservation score at crRNA position.
-    Returns 1 - mean_shannon (higher = more conserved).
-    """
+def get_conservation_score(cons_df, crna_position):
     if cons_df.empty or "position" not in cons_df.columns:
         return float("nan")
     mask = ((cons_df["position"] >= crna_position + 1) &
@@ -147,94 +161,96 @@ def get_conservation_score(cons_df: pd.DataFrame,
     subset = cons_df.loc[mask, "shannon"]
     if subset.empty:
         return float("nan")
-    mean_sh = float(subset.mean())
-    # Invert: 0 Shannon = perfectly conserved = score 1.0
-    return max(0.0, 1.0 - mean_sh / 2.0)
+    return max(0.0, 1.0 - float(subset.mean()) / 2.0)
 
 
-def norm01(series: pd.Series) -> pd.Series:
-    """Normalize series to [0, 1]."""
+def norm01(series):
     v = series.dropna()
     if v.empty or v.max() == v.min():
         return pd.Series(0.5, index=series.index)
     return (series - v.min()) / (v.max() - v.min())
 
 
-def rank_target(target: str,
-                cands_df: pd.DataFrame,
-                spec_df: pd.DataFrame,
-                cons_df: pd.DataFrame,
-                codesign_df: pd.DataFrame,
-                top_n: int) -> pd.DataFrame:
-    """
-    Build final ranking for one target integrating all data.
-    """
+# =============================================================================
+# RANKING
+# =============================================================================
+
+def rank_target(target, cands_df, spec_df, cons_df, codesign_df,
+                t7, dr_dna, dr_rna, top_n):
     if cands_df.empty:
         return pd.DataFrame()
 
-    rows = []
-    # Build specificity lookup
-    spec_lookup = {}
+    spec_lookup    = {}
+    spec_db_lookup = {}
     if not spec_df.empty and "guide_seq" in spec_df.columns:
         for _, r in spec_df.iterrows():
-            spec_lookup[r["guide_seq"]] = bool(r.get("overall_specific", True))
+            seq = r["guide_seq"]
+            spec_lookup[seq] = bool(r.get("overall_specific", True))
+            spec_db_lookup[seq] = {
+                "nontox":          r.get("nontox_specific", "NA"),
+                "enteropathogens": r.get("enteropathogens_specific", "NA"),
+                "human_tx":        r.get("human_tx_specific", "NA"),
+                "uhgg":            r.get("uhgg_specific", "NA"),
+            }
 
-    # Build codesign lookup (guide_seq → primer info)
     codesign_lookup = {}
     if not codesign_df.empty and "crna_seq" in codesign_df.columns:
         for _, r in codesign_df.iterrows():
-            codesign_lookup[r["crna_seq"]] = {
-                "fp_seq":       r.get("fp_seq", ""),
-                "fp_t7":        r.get("fp_t7", ""),
-                "rp_seq":       r.get("rp_seq", ""),
-                "amplicon_size":r.get("amplicon_size", ""),
-                "crna_activity":r.get("crna_activity", ""),
-            }
+            codesign_lookup[r["crna_seq"]] = r
 
+    rows = []
     for _, cand in cands_df.iterrows():
-        seq      = str(cand.get("guide_seq", ""))
+        seq      = str(cand.get("guide_seq", "")).strip()
+        spacer_rna = seq.upper().replace("T", "U")
         crna_pos = int(cand.get("crna_position",
                        cand.get("window_start", 0)))
 
-        is_specific  = spec_lookup.get(seq, True)
-        has_primer   = seq in codesign_lookup
-        cons_score   = get_conservation_score(cons_df, crna_pos)
-        primer_info  = codesign_lookup.get(seq, {})
+        is_specific = spec_lookup.get(seq, True)
+        spec_dbs    = spec_db_lookup.get(seq, {})
+        has_primer  = seq in codesign_lookup
+        cons_score  = get_conservation_score(cons_df, crna_pos)
+        primer_row  = codesign_lookup.get(seq, pd.Series())
+
+        # Compute crRNA sequences
+        full_crna   = make_full_crna(spacer_rna, dr_rna)
+        ivt_template= make_ivt_template(spacer_rna, dr_dna, t7)
 
         rows.append({
-            "target":          target,
-            "reaction":        REACTION_MAP.get(target, "?"),
-            "guide_seq":       seq,
-            "crna_position":   crna_pos,
-            "adapt_activity":  float(cand.get("adapt_activity", 0)),
-            "accessibility":   float(cand.get("accessibility", 0)),
-            "conservation":    cons_score,
-            "specific":        is_specific,
-            "has_primer":      has_primer,
-            "fp_seq":          primer_info.get("fp_seq", ""),
-            "fp_t7":           primer_info.get("fp_t7", ""),
-            "rp_seq":          primer_info.get("rp_seq", ""),
-            "amplicon_size":   primer_info.get("amplicon_size", ""),
-            "gc_content":      float(cand.get("gc_content", 0)),
-            "max_polyu":       int(cand.get("max_polyu", 0)),
+            "target":           target,
+            "reaction":         REACTION_MAP.get(target, "?"),
+            "guide_seq_rna":    spacer_rna,
+            "full_crna_rna":    full_crna,
+            "ivt_template_dna": ivt_template,
+            "crna_position":    crna_pos,
+            "adapt_activity":   float(cand.get("adapt_activity", 0)),
+            "adapt_frac_bound": float(cand.get("adapt_frac_bound", 0)),
+            "accessibility":    float(cand.get("accessibility", 0)),
+            "conservation":     cons_score,
+            "gc_content":       float(cand.get("gc_content", 0)),
+            "max_polyu":        int(cand.get("max_polyu", 0)),
+            "specific":         is_specific,
+            "nontox_specific":  spec_dbs.get("nontox", "NA"),
+            "entero_specific":  spec_dbs.get("enteropathogens", "NA"),
+            "human_specific":   spec_dbs.get("human_tx", "NA"),
+            "uhgg_specific":    spec_dbs.get("uhgg", "NA"),
+            "has_primer":       has_primer,
+            "fp_seq":           primer_row.get("fp_seq", "") if has_primer else "",
+            "fp_t7":            primer_row.get("fp_t7", "") if has_primer else "",
+            "rp_seq":           primer_row.get("rp_seq", "") if has_primer else "",
+            "amplicon_size":    primer_row.get("amplicon_size", "") if has_primer else "",
+            "crna_activity":    primer_row.get("crna_activity", "") if has_primer else "",
         })
 
     df = pd.DataFrame(rows)
     if df.empty:
         return df
 
-    # Normalize all score components
-    df["adapt_norm"] = norm01(df["adapt_activity"])
-    df["acc_norm"]   = norm01(df["accessibility"])
-    df["cons_norm"]  = norm01(df["conservation"])
+    df["adapt_norm"] = norm01(df["adapt_activity"]).fillna(0.5)
+    df["acc_norm"]   = norm01(df["accessibility"]).fillna(0.5)
+    df["cons_norm"]  = norm01(df["conservation"]).fillna(0.5)
     df["spec_score"] = df["specific"].astype(float)
     df["primer_score"]= df["has_primer"].astype(float)
 
-    # Fill NaN
-    for col in ["adapt_norm", "acc_norm", "cons_norm"]:
-        df[col] = df[col].fillna(0.5)
-
-    # Composite score
     df["final_score"] = (
         WEIGHTS["adapt"]        * df["adapt_norm"] +
         WEIGHTS["accessibility"]* df["acc_norm"] +
@@ -244,110 +260,288 @@ def rank_target(target: str,
     )
 
     df = (df.sort_values("final_score", ascending=False)
-            .drop_duplicates(subset="guide_seq")
+            .drop_duplicates(subset="guide_seq_rna")
             .head(top_n)
             .reset_index(drop=True))
     df.insert(0, "rank", df.index + 1)
-
     return df
+
+
+# =============================================================================
+# IDT ORDER SHEETS
+# =============================================================================
+
+def make_idt_crna_sheet(ranked_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    IDT ordering sheet for crRNA IVT templates.
+    Ordered as ssDNA Ultramer (≤200nt) or gBlock (>200nt).
+    """
+    rows = []
+    for _, r in ranked_df.iterrows():
+        name = f"{r['target']}_Rxn{r['reaction']}_rank{r['rank']}_crRNA_IVT"
+        seq  = r["ivt_template_dna"]
+        rows.append({
+            "Name":         name,
+            "Sequence":     seq,
+            "Length":       len(seq),
+            "Type":         "Ultramer" if len(seq) <= 200 else "gBlock",
+            "Scale":        "25nm",
+            "Purification": "STD",
+            "Notes":        (
+                f"crRNA IVT template. "
+                f"T7 transcription produces: {r['full_crna_rna']}. "
+                f"Spacer: {r['guide_seq_rna']}. "
+                f"Target: {r['target']} pos={r['crna_position']}"
+            ),
+        })
+    return pd.DataFrame(rows)
+
+
+def make_idt_primer_sheet(ranked_df: pd.DataFrame,
+                           rtqpcr_data: dict) -> pd.DataFrame:
+    """
+    IDT ordering sheet for RPA primers + RT-qPCR primers.
+    """
+    rows = []
+    seen = set()
+
+    # RPA primers from M07
+    for _, r in ranked_df.iterrows():
+        if not r.get("has_primer"):
+            continue
+        target = r["target"]
+        rank   = r["rank"]
+
+        for primer_type, seq_col, note in [
+            ("FP_T7", "fp_t7",
+             f"RPA Forward primer with T7 promoter. Target: {target} rank {rank}. "
+             f"T7={T7_DNA} prepended."),
+            ("RP",    "rp_seq",
+             f"RPA Reverse primer. Target: {target} rank {rank}."),
+        ]:
+            seq = str(r.get(seq_col, "")).strip()
+            if not seq or seq in seen:
+                continue
+            seen.add(seq)
+            name = f"{target}_Rxn{r['reaction']}_rank{rank}_{primer_type}"
+            rows.append({
+                "Name":         name,
+                "Sequence":     seq,
+                "Length":       len(seq),
+                "Type":         "Ultramer" if len(seq) <= 200 else "Standard",
+                "Scale":        "25nm",
+                "Purification": "STD",
+                "Notes":        note,
+            })
+
+    # RT-qPCR primers from M11
+    for gene, df in rtqpcr_data.items():
+        if df.empty:
+            continue
+        best = df.iloc[0]
+        for primer_type, seq_col in [("qPCR_FP", "fp_seq"),
+                                       ("qPCR_RP", "rp_seq")]:
+            seq = str(best.get(seq_col, "")).strip()
+            if not seq or seq in seen:
+                continue
+            seen.add(seq)
+            name = f"{gene}_{primer_type}_rank1"
+            rows.append({
+                "Name":         name,
+                "Sequence":     seq,
+                "Length":       len(seq),
+                "Type":         "Standard",
+                "Scale":        "25nm",
+                "Purification": "STD",
+                "Notes":        (
+                    f"RT-qPCR primer for {gene}. "
+                    f"Tm={best.get('fp_tm' if 'FP' in primer_type else 'rp_tm', '')}°C. "
+                    f"Amplicon={best.get('amplicon_size', '')}bp."
+                ),
+            })
+
+    return pd.DataFrame(rows)
 
 
 # =============================================================================
 # HTML REPORT
 # =============================================================================
 
-def make_html(df: pd.DataFrame, out_path: Path, org: str):
-    """Generate interactive HTML report."""
+def make_html(df: pd.DataFrame, rtqpcr_data: dict,
+              cfg: dict, out_path: Path, org: str):
+    """Generate comprehensive interactive HTML report."""
 
-    # Color coding per reaction
-    reaction_colors = {"A": "#2196F3", "B": "#4CAF50", "?": "#9E9E9E"}
+    reaction_colors = {"A": "#1565C0", "B": "#2E7D32", "?": "#757575"}
+    now = datetime.now().strftime("%Y-%m-%d %H:%M")
 
+    dr_rna = cfg.get("crna", {}).get("dr", DR_RNA)
+    t7     = cfg.get("crna", {}).get("t7", T7_DNA)
+
+    # Build main table rows
     rows_html = []
     for _, r in df.iterrows():
-        react = r.get("reaction", "?")
-        color = reaction_colors.get(react, "#9E9E9E")
-        spec  = "✅" if r.get("specific", True) else "⚠️"
-        primer= "✅" if r.get("has_primer", False) else "—"
-        score = f"{r.get('final_score', 0):.3f}"
-        act   = f"{r.get('adapt_activity', 0):.3f}"
-        acc   = f"{r.get('accessibility', 0):.3f}"
-        cons  = f"{r.get('conservation', 0):.3f}"
-        amp   = str(r.get("amplicon_size", "—"))
+        react   = r.get("reaction", "?")
+        color   = reaction_colors.get(react, "#757575")
+        spec    = "✅" if r.get("specific", True)  else "⚠️"
+        primer  = "✅" if r.get("has_primer", False) else "—"
+        score   = f"{r.get('final_score', 0):.3f}"
+        act     = f"{r.get('adapt_activity', 0):.3f}"
+        frac    = f"{r.get('adapt_frac_bound', 0):.4f}"
+        acc     = f"{r.get('accessibility', 0):.3f}"
+        cons    = f"{r.get('conservation', 0):.3f}"
+        amp     = str(r.get("amplicon_size", "—"))
+
+        # Specificity detail
+        spec_detail = (
+            f"nontox={r.get('nontox_specific','NA')} | "
+            f"entero={r.get('entero_specific','NA')} | "
+            f"human={r.get('human_specific','NA')} | "
+            f"UHGG={r.get('uhgg_specific','NA')}"
+        )
+
+        # Primer sequences
+        fp_t7 = str(r.get("fp_t7", "—"))
+        rp    = str(r.get("rp_seq", "—"))
 
         rows_html.append(f"""
         <tr>
           <td>{r['rank']}</td>
-          <td><span style="background:{color};color:white;padding:2px 6px;
-              border-radius:3px;font-size:11px">{react}</span></td>
+          <td><span class="badge" style="background:{color}">{react}</span></td>
           <td><b>{r['target']}</b></td>
-          <td><code style="font-size:11px">{r['guide_seq']}</code></td>
+          <td><code class="seq">{r['guide_seq_rna']}</code></td>
           <td>{r['crna_position']}</td>
           <td>{act}</td>
+          <td>{frac}</td>
           <td>{acc}</td>
           <td>{cons}</td>
-          <td>{spec}</td>
+          <td title="{spec_detail}">{spec}</td>
           <td>{primer}</td>
           <td>{amp}</td>
           <td><b>{score}</b></td>
+        </tr>
+        <tr class="detail-row">
+          <td colspan="13" class="detail-cell">
+            <b>Full crRNA (RNA):</b> <code class="seq">{r['full_crna_rna']}</code><br>
+            <b>IVT template (order to IDT as ssDNA):</b>
+            <code class="seq">{r['ivt_template_dna']}</code><br>
+            <b>RPA FP (with T7):</b> <code class="seq">{fp_t7}</code> &nbsp;|&nbsp;
+            <b>RPA RP:</b> <code class="seq">{rp}</code><br>
+            <small class="muted">Spec: {spec_detail}</small>
+          </td>
         </tr>""")
 
     rows_str = "\n".join(rows_html)
-    now = datetime.now().strftime("%Y-%m-%d %H:%M")
+
+    # RT-qPCR table
+    qpcr_rows = []
+    for gene, qdf in rtqpcr_data.items():
+        if qdf.empty:
+            continue
+        best = qdf.iloc[0]
+        qpcr_rows.append(f"""
+        <tr>
+          <td><b>{gene}</b></td>
+          <td><code class="seq">{best.get('fp_seq','')}</code></td>
+          <td>{best.get('fp_tm','')}°C</td>
+          <td><code class="seq">{best.get('rp_seq','')}</code></td>
+          <td>{best.get('rp_tm','')}°C</td>
+          <td>{best.get('amplicon_size','')} bp</td>
+        </tr>""")
+    qpcr_str = "\n".join(qpcr_rows)
+
+    # Database section
+    db_info = """
+    <li><b>Non-toxigenic C. difficile</b> (Group C, n=52 genomes from NCBI)</li>
+    <li><b>Enteric pathogens</b> (n=11 species: C. sordellii, C. perfringens,
+        C. botulinum, E. faecalis, E. faecium, K. pneumoniae, E. coli O157,
+        S. enterica, C. jejuni, L. monocytogenes, S. aureus)</li>
+    <li><b>Human transcriptome</b> (GRCh38 RefSeq mRNA, NCBI)</li>
+    <li><b>Human Gut Microbiome</b> (UHGG v2.0.2, n=4,742 species representatives
+        excluding <i>C. difficile</i>)</li>"""
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>SHERLOCK crRNA Candidates — {org}</title>
+  <title>SHERLOCK crRNA Report — {org}</title>
   <style>
-    body {{ font-family: Arial, sans-serif; margin: 20px; color: #333; }}
-    h1 {{ color: #1565C0; }}
-    h2 {{ color: #424242; font-size: 14px; font-weight: normal; }}
-    table {{ border-collapse: collapse; width: 100%; font-size: 13px; }}
-    th {{ background: #1565C0; color: white; padding: 8px 10px;
-          text-align: left; position: sticky; top: 0; }}
-    td {{ padding: 6px 10px; border-bottom: 1px solid #eee; }}
-    tr:hover {{ background: #f5f5f5; }}
-    tr:nth-child(even) {{ background: #fafafa; }}
-    .badge {{ display: inline-block; padding: 2px 8px; border-radius: 10px;
+    body {{ font-family: 'Segoe UI', Arial, sans-serif; margin: 20px;
+            color: #212121; background: #fafafa; }}
+    h1 {{ color: #0D47A1; border-bottom: 2px solid #0D47A1; padding-bottom: 8px; }}
+    h2 {{ color: #37474F; margin-top: 30px; }}
+    h3 {{ color: #546E7A; }}
+    .badge {{ color: white; padding: 2px 8px; border-radius: 3px;
               font-size: 11px; font-weight: bold; }}
-    .filter {{ margin: 10px 0; }}
-    input {{ padding: 6px; border: 1px solid #ccc; border-radius: 4px; width: 200px; }}
-    .summary {{ background: #E3F2FD; padding: 10px 15px; border-radius: 6px;
-                margin: 15px 0; font-size: 13px; }}
+    table {{ border-collapse: collapse; width: 100%; font-size: 12px;
+             background: white; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }}
+    th {{ background: #0D47A1; color: white; padding: 8px 10px;
+          text-align: left; position: sticky; top: 0; z-index: 1; }}
+    td {{ padding: 5px 10px; border-bottom: 1px solid #e0e0e0;
+          vertical-align: top; }}
+    tr:hover td {{ background: #E3F2FD; }}
+    .detail-row td {{ background: #F5F5F5; font-size: 11px; padding: 6px 12px; }}
+    .detail-cell {{ border-left: 3px solid #0D47A1; }}
+    .seq {{ font-family: 'Courier New', monospace; font-size: 10px;
+            background: #ECEFF1; padding: 1px 4px; border-radius: 2px;
+            word-break: break-all; }}
+    .muted {{ color: #757575; }}
+    .info-box {{ background: #E8F5E9; border-left: 4px solid #388E3C;
+                 padding: 12px 16px; margin: 15px 0; border-radius: 4px; }}
+    .warn-box {{ background: #FFF8E1; border-left: 4px solid #F9A825;
+                 padding: 12px 16px; margin: 15px 0; border-radius: 4px; }}
+    input {{ padding: 6px 10px; border: 1px solid #bbb; border-radius: 4px;
+             width: 250px; font-size: 13px; }}
+    .filter {{ margin: 12px 0; }}
+    ul {{ margin: 8px 0; padding-left: 20px; }}
+    li {{ margin: 4px 0; }}
+    .params {{ font-family: monospace; font-size: 12px; background: #263238;
+               color: #ECEFF1; padding: 12px; border-radius: 4px;
+               overflow-x: auto; }}
   </style>
 </head>
 <body>
-  <h1>🔬 SHERLOCK crRNA Candidate Report</h1>
-  <h2>Organism: {org} | Generated: {now} | Pipeline v1.0</h2>
+  <h1>🔬 SHERLOCK crRNA Design Report</h1>
+  <p style="color:#546E7A">
+    <b>Organism:</b> {org} &nbsp;|&nbsp;
+    <b>Generated:</b> {now} &nbsp;|&nbsp;
+    <b>Pipeline:</b> v1.0
+  </p>
 
-  <div class="summary">
-    <b>Reaction A</b> (LwCas13a): tcdB + tcdA + 16S &nbsp;|&nbsp;
-    <b>Reaction B</b> (LwCas13a): cdtA + cdtB + tcdC_wt + tcdC_junction + tpiA + sodA<br>
-    Ranking weights: ADAPT activity 35% · Accessibility 20% · Conservation 20% ·
-    Specificity 15% · Primer co-design 10%
+  <div class="info-box">
+    <b>Reaction design (Option C — two reactions, LwCas13a only):</b><br>
+    <b>Reaction A:</b> tcdB + tcdA + 16S (rRNA internal control)<br>
+    <b>Reaction B:</b> cdtA + cdtB + tcdC_wt + tcdC_junction + tpiA + sodA<br><br>
+    <b>Ranking weights:</b>
+    ADAPT activity 35% · mRNA Accessibility 20% · Conservation 20% ·
+    Specificity 15% · RT-RPA co-design 10%
   </div>
 
+  <div class="warn-box">
+    <b>crRNA synthesis (Kellner et al. 2019, Nat Protoc):</b><br>
+    Order IVT template as ssDNA Ultramer to IDT:
+    <code class="seq">RC( T7 + DR_DNA + spacer_DNA )</code><br>
+    T7 transcription produces functional crRNA:
+    <code class="seq">DR_RNA + spacer_RNA</code><br>
+    <b>DR (LwCas13a):</b> <code class="seq">{dr_rna}</code><br>
+    <b>T7 promoter:</b> <code class="seq">{t7}</code>
+  </div>
+
+  <h2>📋 Final crRNA Candidates</h2>
   <div class="filter">
-    🔍 Filter: <input type="text" id="filterInput"
-      onkeyup="filterTable()" placeholder="Search guide or target...">
+    🔍 <input type="text" id="filterInput"
+      onkeyup="filterTable()" placeholder="Search sequence or target...">
+    &nbsp; <small class="muted">Click row to expand sequences</small>
   </div>
 
   <table id="rankTable">
     <thead>
       <tr>
-        <th>#</th>
-        <th>Rxn</th>
-        <th>Target</th>
-        <th>Guide Sequence (5'→3')</th>
-        <th>Position</th>
-        <th>ADAPT Activity</th>
-        <th>Accessibility</th>
-        <th>Conservation</th>
-        <th>Specific</th>
-        <th>Primer</th>
-        <th>Amplicon (bp)</th>
-        <th>Final Score</th>
+        <th>#</th><th>Rxn</th><th>Target</th>
+        <th>Spacer (RNA 5'→3')</th><th>Pos</th>
+        <th>ADAPT Activity</th><th>Frac Bound</th>
+        <th>Accessibility</th><th>Conservation</th>
+        <th>Specific</th><th>RT-RPA</th><th>Amplicon</th>
+        <th>Score</th>
       </tr>
     </thead>
     <tbody>
@@ -355,15 +549,78 @@ def make_html(df: pd.DataFrame, out_path: Path, org: str):
     </tbody>
   </table>
 
+  <h2>🧬 RT-qPCR Reference Primers</h2>
+  <p class="muted">Top-ranked primer pair per gene (Primer3, Tm=60°C, amplicon 80-200bp)</p>
+  <table>
+    <thead>
+      <tr>
+        <th>Gene</th><th>Forward Primer (5'→3')</th><th>FP Tm</th>
+        <th>Reverse Primer (5'→3')</th><th>RP Tm</th><th>Amplicon</th>
+      </tr>
+    </thead>
+    <tbody>
+{qpcr_str}
+    </tbody>
+  </table>
+
+  <h2>🗄️ Specificity Databases</h2>
+  <ul>{db_info}</ul>
+  <p class="muted">
+    Rejection criteria: ≥90% identity over ≥80% of crRNA length,
+    alignment starting at position ≤5.
+  </p>
+
+  <h2>⚙️ Pipeline Parameters</h2>
+  <div class="params">
+ADAPT: sliding-window, maximize-activity, W=250, gl=28, LwCas13a model
+MAFFT: --localpair --maxiterate 1000 (n≤200) / --auto (n&gt;500)
+RNAplfold: W=80, L=40, min_acc=0.5
+PrimedRPA: IdentityThreshold=0.95, PrimerLength=32, AmpliconSizeLimit=250
+BLAST: blastn-short, word_size=7, evalue=0.01
+Filters: GC 30-70%, poly-U ≤3, accessibility ≥0.5
+  </div>
+
+  <h2>📚 References</h2>
+  <ol style="font-size:12px; color:#546E7A">
+    <li>Kellner MJ et al. SHERLOCK: nucleic acid detection with CRISPR nucleases.
+        <i>Nat Protoc</i> 2019.</li>
+    <li>Metsky HC et al. Designing sensitive viral diagnostics with efficient
+        machine learning. <i>Nat Biotechnol</i> 2022. (ADAPT)</li>
+    <li>Higgins M et al. PrimedRPA. <i>Bioinformatics</i> 2019.</li>
+    <li>Almeida A et al. A unified catalog of 204,938 reference genomes from
+        the human gut microbiome. <i>Nat Biotechnol</i> 2021. (UHGG v2.0)</li>
+  </ol>
+
   <script>
     function filterTable() {{
       var input = document.getElementById("filterInput").value.toLowerCase();
-      var rows  = document.getElementById("rankTable").getElementsByTagName("tr");
-      for (var i = 1; i < rows.length; i++) {{
-        var txt = rows[i].textContent.toLowerCase();
-        rows[i].style.display = txt.includes(input) ? "" : "none";
+      var rows  = document.querySelectorAll("#rankTable tbody tr");
+      var i = 0;
+      while (i < rows.length) {{
+        var mainRow   = rows[i];
+        var detailRow = rows[i+1];
+        if (mainRow.classList.contains("detail-row")) {{ i++; continue; }}
+        var txt = mainRow.textContent.toLowerCase();
+        var show = txt.includes(input);
+        mainRow.style.display   = show ? "" : "none";
+        if (detailRow) detailRow.style.display = show ? "" : "none";
+        i += 2;
       }}
     }}
+    // Click to expand detail rows
+    document.querySelectorAll("#rankTable tbody tr:not(.detail-row)").forEach(function(row) {{
+      row.style.cursor = "pointer";
+      row.addEventListener("click", function() {{
+        var next = this.nextElementSibling;
+        if (next && next.classList.contains("detail-row")) {{
+          next.style.display = next.style.display === "none" ? "" : "none";
+        }}
+      }});
+    }});
+    // Initially hide detail rows
+    document.querySelectorAll(".detail-row").forEach(function(r) {{
+      r.style.display = "none";
+    }});
   </script>
 </body>
 </html>"""
@@ -387,8 +644,13 @@ def main():
     cfg    = load_config(str(Path(args.config).expanduser()))
     org    = cfg["organism"]["display"]
     paths  = cfg["paths"]
+    crna_cfg = cfg.get("crna", {})
     rank_cfg = cfg.get("ranking", {})
-    top_n  = rank_cfg.get("top_n", TOP_N)
+
+    top_n   = rank_cfg.get("top_n",  TOP_N)
+    dr_rna  = crna_cfg.get("dr",     DR_RNA).replace("T", "U")
+    dr_dna  = rna_to_dna(dr_rna)
+    t7      = crna_cfg.get("t7",     T7_DNA)
 
     # Dirs
     main_dir    = Path(paths["main"])
@@ -396,68 +658,84 @@ def main():
     primers_dir = main_dir / "data" / "07_primers"
     sp_dir      = main_dir / "data" / "08_specificity"
     cons_dir    = main_dir / "data" / "04_alignment" / "conservation"
+    rtqpcr_dir  = main_dir / "data" / "11_rtqpcr"
     out_dir     = main_dir / "data" / "09_report"
     report_dir  = main_dir / "reports" / "M09_report"
     out_dir.mkdir(parents=True, exist_ok=True)
     report_dir.mkdir(parents=True, exist_ok=True)
 
     log = get_logger("M09_report", cfg)
-    print_logo("M09 · Ranking + Report", organism=org)
+    print_logo("M09 · Ranking + Comprehensive Report", organism=org)
 
-    save_versions(
-        tools={}, python_pkgs=["pandas", "numpy"],
-        report_dir=report_dir, log=log)
+    save_versions(tools={}, python_pkgs=["pandas","numpy"],
+                  report_dir=report_dir, log=log)
+
+    # Load RT-qPCR data
+    qpcr_genes   = cfg.get("rtqpcr", {}).get("targets",
+                    ["tcdA","tcdB","tcdC","cdtA","cdtB","tpiA","sodA"])
+    rtqpcr_data  = {g: load_rtqpcr(rtqpcr_dir, g) for g in qpcr_genes}
 
     all_ranked   = []
     summary_rows = []
 
     for target in TARGETS:
         log.info(f"  {target}")
-
         cands_df    = load_candidates(crna_dir, target)
         spec_df     = load_specificity(sp_dir, target)
         cons_df     = load_conservation(cons_dir, target)
         codesign_df = load_codesign(primers_dir, target)
 
-        ranked = rank_target(target, cands_df, spec_df,
-                              cons_df, codesign_df, top_n)
+        ranked = rank_target(target, cands_df, spec_df, cons_df,
+                             codesign_df, t7, dr_dna, dr_rna, top_n)
 
         if not ranked.empty:
             ranked.to_csv(out_dir / f"{target}_ranked.tsv",
                           sep="\t", index=False)
             all_ranked.append(ranked)
-            log.info(f"    → {len(ranked)} candidates ranked")
 
         summary_rows.append({
             "target":    target,
             "reaction":  REACTION_MAP.get(target, "?"),
             "n_ranked":  len(ranked),
-            "top1_score":round(float(ranked.iloc[0]["final_score"]), 3)
+            "top1_score":round(float(ranked.iloc[0]["final_score"]),3)
                           if not ranked.empty else 0,
-            "top1_seq":  ranked.iloc[0]["guide_seq"]
+            "top1_seq":  ranked.iloc[0]["guide_seq_rna"]
                           if not ranked.empty else "",
         })
 
-    # Combined ranking
-    if all_ranked:
-        combined = pd.concat(all_ranked, ignore_index=True)
-        tsv_out  = out_dir / "final_ranking.tsv"
-        html_out = out_dir / "final_ranking.html"
-        combined.to_csv(tsv_out, sep="\t", index=False)
-        make_html(combined, html_out, org)
-        log.info(f"TSV  → {tsv_out}")
-        log.info(f"HTML → {html_out}")
-        log.info(f"Total candidates in report: {len(combined)}")
+    if not all_ranked:
+        log.error("No candidates to report.")
+        sys.exit(1)
+
+    combined = pd.concat(all_ranked, ignore_index=True)
+
+    # Write TSV
+    tsv_out = out_dir / "final_ranking.tsv"
+    combined.to_csv(tsv_out, sep="\t", index=False)
+
+    # Write HTML
+    html_out = out_dir / "final_ranking.html"
+    make_html(combined, rtqpcr_data, cfg, html_out, org)
+
+    # Write IDT sheets
+    idt_crna = make_idt_crna_sheet(combined)
+    idt_crna.to_csv(out_dir / "IDT_order_crRNA.tsv", sep="\t", index=False)
+
+    idt_primers = make_idt_primer_sheet(combined, rtqpcr_data)
+    idt_primers.to_csv(out_dir / "IDT_order_primers.tsv", sep="\t", index=False)
+
+    log.info(f"TSV          → {tsv_out}  ({len(combined)} candidates)")
+    log.info(f"HTML         → {html_out}")
+    log.info(f"IDT crRNA    → {out_dir/'IDT_order_crRNA.tsv'}  ({len(idt_crna)} oligos)")
+    log.info(f"IDT primers  → {out_dir/'IDT_order_primers.tsv'}  ({len(idt_primers)} oligos)")
 
     write_tsv(summary_rows, report_dir / "summary.tsv", log=log)
 
     log.info("─" * 56)
     log.info("M09 complete.")
     for r in summary_rows:
-        log.info(f"  {r['target']:<20}  "
-                 f"Rxn={r['reaction']}  "
-                 f"top1={r['top1_score']}  "
-                 f"{r['top1_seq']}")
+        log.info(f"  {r['target']:<20}  Rxn={r['reaction']}  "
+                 f"top1={r['top1_score']}  {r['top1_seq']}")
 
     write_checkpoint("M09_report", report_dir, log=log)
 
