@@ -245,9 +245,10 @@ Note: WARNs across all targets are predominantly low GC (spacers are AT-rich) �
 | crRNA candidates (ADAPT) | 81 across 9 targets |
 | RT-RPA co-designs | 475 |
 | Specificity pass rate | 79/81 (97.5%) |
-| **Final validated sets** | **29 (crRNA + FP+T7 + RP)** |
-| Synthetic controls | 45/45 PASS |
-| RT-qPCR reference primers | 7/7 PASS |
+| **Final validated sets** | **32 (crRNA + FP+T7 + RP)** |
+| Synthetic controls | 32/32 PASS |
+| RT-qPCR reference primers | 8/8 PASS |
+| crRNA validation | 2 PASS · 28 WARN (GC/struct) · 2 FAIL (sensitivity) |
 
 ---
 
