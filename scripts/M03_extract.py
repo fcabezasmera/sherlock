@@ -48,32 +48,31 @@ GENE_GROUP_MAP = {
     "cdtA":  ["groupA"],
     "cdtB":  ["groupA"],
     "tpiA":  ["groupA", "groupB", "groupC"],
-    "sodA":  ["groupA", "groupB", "groupC"],
-    "16S":   ["groupA", "groupB", "groupC"],
+    "rpoB":  ["groupA", "groupB", "groupC"],
 }
 
 # Alternative search terms for genes not annotated with gene= attribute
 # Format: {gene_name: [product_keywords, ...]}
 GENE_PRODUCT_ALIASES = {
-    "sodA": ["superoxide dismutase"],
-    "16S":  ["16S ribosomal RNA"],
+    "rpoB": ["DNA-directed RNA polymerase subunit beta",
+             "RNA polymerase subunit beta"],
 }
 
 # Feature types to accept per gene (default: CDS)
 GENE_FEATURE_TYPES = {
-    "16S": ["rRNA", "exon"],
+
 }
 
 # Alternative search terms for genes not annotated with gene= attribute
 # Format: {gene_name: [product_keywords, ...]}
 GENE_PRODUCT_ALIASES = {
-    "sodA": ["superoxide dismutase"],
-    "16S":  ["16S ribosomal RNA"],
+    "rpoB": ["DNA-directed RNA polymerase subunit beta",
+             "RNA polymerase subunit beta"],
 }
 
 # Feature types to accept per gene (default: CDS)
 GENE_FEATURE_TYPES = {
-    "16S": ["rRNA", "exon"],
+
 }
 
 # tcdC junction extraction for RT027 (Group A)

@@ -5,9 +5,9 @@
 DEFAULT_CONFIG = "~/sherlock/config.yaml"
 TOP_N = 5
 WEIGHTS = {"adapt":0.35,"accessibility":0.20,"conservation":0.20,"specificity":0.15,"primer":0.10}
-TARGETS = ["tcdA_all","tcdB_all","tcdC_wt","tcdC_junction","cdtA_groupA","cdtB_groupA","tpiA_all","sodA_all","16S_all"]
-REACTION_MAP = {"tcdB_all":"A","tcdA_all":"A","16S_all":"A","cdtA_groupA":"B","cdtB_groupA":"B","tcdC_wt":"B","tcdC_junction":"B","tpiA_all":"B","sodA_all":"B"}
-TARGET_LABELS = {"tcdA_all":"tcdA","tcdB_all":"tcdB","tcdC_wt":"tcdC (WT)","tcdC_junction":"tcdC (RT027 jct)","cdtA_groupA":"cdtA","cdtB_groupA":"cdtB","tpiA_all":"tpiA","sodA_all":"sodA","16S_all":"16S rRNA"}
+TARGETS = ["tcdA_all","tcdB_clade2","tcdC_wt","tcdC_junction","cdtA_groupA","cdtB_groupA","tpiA_all","rpoB_all","rpoB_all"]
+REACTION_MAP = {"tcdB_clade2":"A","tcdA_all":"A","rpoB_all":"A","cdtA_groupA":"B","cdtB_groupA":"B","tcdC_wt":"B","tcdC_junction":"B","tpiA_all":"B","rpoB_all":"B"}
+TARGET_LABELS = {"tcdA_all":"tcdA","tcdB_clade2":"tcdB","tcdC_wt":"tcdC (WT)","tcdC_junction":"tcdC (RT027 jct)","cdtA_groupA":"cdtA","cdtB_groupA":"cdtB","tpiA_all":"tpiA","rpoB_all":"sodA","rpoB_all":"16S rRNA"}
 DR_RNA = "GGGGAUUUAGACUACCCCAAAAACGAAGGGGGGACUAAAAC"
 T7_DNA = "AATTCTAATACGACTCACTATAGG"
 

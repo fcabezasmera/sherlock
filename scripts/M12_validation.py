@@ -56,20 +56,20 @@ T7_DNA = "AATTCTAATACGACTCACTATAGG"
 
 GENE_MAP = {
     "tcdA_all":      ["tcdA_groupA","tcdA_groupB"],
-    "tcdB_all":      ["tcdB_groupA","tcdB_groupB"],
+    "tcdB_clade2":      ["tcdB_groupA","tcdB_groupB"],
     "tcdC_wt":       ["tcdC_groupB"],
     "tcdC_junction": ["tcdC_junction_groupA"],
     "cdtA_groupA":   ["cdtA_groupA"],
     "cdtB_groupA":   ["cdtB_groupA"],
     "tpiA_all":      ["tpiA_groupA","tpiA_groupB","tpiA_groupC"],
-    "sodA_all":      ["sodA_groupA","sodA_groupB","sodA_groupC"],
-    "16S_all":       ["16S_groupA","16S_groupB","16S_groupC"],
+    "rpoB_all":      ["sodA_groupA","sodA_groupB","sodA_groupC"],
+    "rpoB_all":       ["16S_groupA","16S_groupB","16S_groupC"],
 }
 
 RTQPCR_GENE_MAP = {
-    "tcdA":"tcdA_all","tcdB":"tcdB_all","tcdC":"tcdC_wt",
+    "tcdA":"tcdA_all","tcdB":"tcdB_clade2","tcdC":"tcdC_wt",
     "cdtA":"cdtA_groupA","cdtB":"cdtB_groupA",
-    "tpiA":"tpiA_all","sodA":"sodA_all",
+    "tpiA":"tpiA_all","sodA":"rpoB_all",
 }
 
 # =============================================================================

@@ -145,7 +145,7 @@ classification:
 # ---------------------------------------------------------------------------
 extraction:
   utr_flank_nt: 50
-  targets: ["tcdA", "tcdB", "tcdC", "cdtA", "cdtB", "tpiA", "sodA", "16S"]
+  targets: ["tcdA", "tcdB", "tcdC", "cdtA", "cdtB", "tpiA", "rpoB"]
   # Only extract genes where partial=false AND pseudo=false in GFF
   skip_partial:   true
   skip_pseudogene: true
@@ -168,6 +168,7 @@ alignment:
 accessibility:
   window:  80
   span:    40
+  u_window: 28    # spacer length — R3 fix (was 1)
   min_acc: 0.5
   threads: 8
 
@@ -176,9 +177,11 @@ accessibility:
 # ---------------------------------------------------------------------------
 crna:
   spacer_len:    28
-  gc_min:        0.30
-  gc_max:        0.70
+  gc_min:        0.25    # adapted for C. difficile 29% GC genome
+  gc_max:        0.65
   polyu_max:     3
+  u_frac_max:    0.50    # R7: total U fraction filter
+  g_pos1_penalty: -0.05  # R6: G at position 1 reduces activity ~30-40%
   mfe_max:       -5.0
   slide_step:    1
   junction_mode: true
@@ -187,11 +190,11 @@ crna:
   dr: "GGGGAUUUAGACUACCCCAAAAACGAAGGGGGGACUAAAAC"
   # Reaction design (Option C: two reactions, LwCas13a only)
   reaction_A:
-    targets:  ["tcdB", "tcdA", "16S"]
+    targets:  ["tcdA", "tcdB_clade2", "tcdB_clade1", "rpoB"]
     ortholog: "LwCas13a"
     reporter: "poly-U"
   reaction_B:
-    targets:  ["cdtA", "cdtB", "tcdC_PAN", "tcdC_RT027jct", "tpiA", "sodA"]
+    targets:  ["tcdC_wt", "tcdC_junction", "cdtA", "cdtB", "tpiA"]
     ortholog: "LwCas13a"
     reporter: "poly-U"
 
@@ -254,4 +257,4 @@ rtqpcr:
   tm_tol:        2.0
   gc_min:        0.45
   gc_max:        0.65
-  targets: ["tcdA", "tcdB", "tcdC", "cdtA", "tpiA", "sodA"]
+  targets: ["tcdA", "tcdB_clade1", "tcdB_clade2", "tcdC", "cdtA", "cdtB", "tpiA", "rpoB"]

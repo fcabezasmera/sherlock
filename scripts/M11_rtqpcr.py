@@ -50,13 +50,14 @@ NUM_RETURN        = 10
 
 # Gene → MSA target mapping (consensus from M05)
 RTQPCR_TARGETS = {
-    "tcdA": "tcdA_all",
-    "tcdB": "tcdB_all",
-    "tcdC": "tcdC_wt",
-    "cdtA": "cdtA_groupA",
-    "cdtB": "cdtB_groupA",   # added
-    "tpiA": "tpiA_all",
-    "sodA": "sodA_all",
+    "tcdA":        "tcdA_all",
+    "tcdB_clade2": "tcdB_clade2",
+    "tcdB_clade1": "tcdB_clade1",
+    "tcdC":        "tcdC_wt",
+    "cdtA":        "cdtA_groupA",
+    "cdtB":        "cdtB_groupA",
+    "tpiA":        "tpiA_all",
+    "rpoB":        "rpoB_all",
 }
 
 # =============================================================================

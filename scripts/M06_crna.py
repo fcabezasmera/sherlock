@@ -56,14 +56,14 @@ ADAPT_WINDOW    = 250     # sliding window size
 # The 9 MSA targets (from M04)
 TARGETS = [
     "tcdA_all",
-    "tcdB_all",
+    "tcdB_clade2",
+    "tcdB_clade1",
     "tcdC_wt",
     "tcdC_junction",
     "cdtA_groupA",
     "cdtB_groupA",
     "tpiA_all",
-    "sodA_all",
-    "16S_all",
+    "rpoB_all",
 ]
 
 # =============================================================================
@@ -285,6 +285,15 @@ def rank_candidates(adapt_df: pd.DataFrame,
     rows = []
     for _, row in adapt_df.iterrows():
         seq = str(row.get("guide_seq", "")).strip()
+        # R7: total U fraction filter (Milligan 1987)
+        u_frac_val = seq.upper().replace("T","U").count("U") / max(len(seq),1)
+        if u_frac_val > 0.50:
+            rows.append({"target":target,"guide_seq":seq,"window_start":int(row.get("window_start",0)),
+                "window_end":int(row.get("window_end",0)),"crna_position":int(row.get("crna_position",row.get("window_start",0))),
+                "adapt_activity":float(row.get("adapt_activity",float("nan"))),"adapt_frac_bound":float(row.get("adapt_frac_bound",float("nan"))),
+                "accessibility":0.0,"gc_content":round(gc_content(seq),3),"max_polyu":max_polyu(seq),
+                "filter_pass":False,"filter_reason":"high_U_frac"})
+            continue
         ok, reason = passes_filters(seq, gc_min, gc_max, polyu_max)
         acc = window_accessibility(acc_df, int(row.get("window_start", 0)))
 
@@ -333,8 +342,21 @@ def rank_candidates(adapt_df: pd.DataFrame,
     df_pass["acc_norm"]   = df_pass["acc_norm"].fillna(0.5)
 
     # Composite score
-    df_pass["score"] = (0.60 * df_pass["adapt_norm"] +
-                        0.40 * df_pass["acc_norm"])
+    # R6: G at position 1 penalty (Wessels 2020, Mol Cell)
+    df_pass["g_pos1_pen"] = df_pass["guide_seq"].apply(
+        lambda s: -0.05 if s.upper().replace("T","U")[:1] == "G" else 0.0)
+    # R8: GC score for LwCas13a (25-65% optimal; C. diff genome 29% GC)
+    def gc_score(seq):
+        gc = sum(1 for b in seq.upper() if b in "GC") / max(len(seq),1)
+        if 0.25 <= gc <= 0.65: return 1.0
+        if gc < 0.20 or gc > 0.75: return 0.0
+        return 0.5
+    df_pass["gc_score"] = df_pass["guide_seq"].apply(gc_score)
+    # Composite score: ADAPT 55% + accessibility 35% + GC 10% + G-pos1 penalty
+    df_pass["score"] = (0.55 * df_pass["adapt_norm"] +
+                        0.35 * df_pass["acc_norm"] +
+                        0.10 * df_pass["gc_score"] +
+                        df_pass["g_pos1_pen"])
 
     # Deduplicate → top N
     df_pass = (df_pass

@@ -62,14 +62,14 @@ SPACER_LEN        = 28
 
 TARGETS = [
     "tcdA_all",
-    "tcdB_all",
+    "tcdB_clade2",
+    "tcdB_clade1",
     "tcdC_wt",
     "tcdC_junction",
     "cdtA_groupA",
     "cdtB_groupA",
     "tpiA_all",
-    "sodA_all",
-    "16S_all",
+    "rpoB_all",
 ]
 
 # =============================================================================

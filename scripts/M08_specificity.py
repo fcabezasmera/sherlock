@@ -81,35 +81,35 @@ HUMAN_TX_SEQTYPE= "rna"    # mRNA sequences
 # human_tx   : check all targets
 
 SKIP_DATABASES = {
-    # target → set of DB names to skip (not used for rejection)
+    # Toxin targets: nontox skipped (C. diff nontox may retain toxin gene remnants)
     "tcdA_all":      {"nontox"},
-    "tcdB_all":      {"nontox"},
+    "tcdB_clade2":   {"nontox"},
+    "tcdB_clade1":   {"nontox"},
     "tcdC_wt":       {"nontox"},
     "tcdC_junction": {"nontox"},
     "cdtA_groupA":   {"nontox"},
     "cdtB_groupA":   {"nontox"},
+    # Housekeeping: skip nontox; rpoB also skip enteropathogens (universal gene)
     "tpiA_all":      {"nontox"},
-    "sodA_all":      {"nontox"},
-    "16S_all":       {"nontox", "enteropathogens"},  # 16S is universal
-    # uhgg: check all targets (gut microbiome cross-reactivity)
+    "rpoB_all":      {"nontox", "enteropathogens"},
 }
 
-# Additional skip for uhgg for 16S (16S is universal in gut bacteria)
-SKIP_UHGG_TARGETS = {"16S_all", "tpiA_all", "sodA_all"}  # housekeeping genes
+# Skip UHGG for housekeeping genes (expected hits in gut bacteria)
+SKIP_UHGG_TARGETS = {"tpiA_all", "rpoB_all"}
 
 # Raise coverage threshold to reduce false positives from short alignments
 REJECT_COVERAGE = 80.0   # % of crRNA covered (increased from 70%)
 
 TARGETS = [
     "tcdA_all",
-    "tcdB_all",
+    "tcdB_clade2",
+    "tcdB_clade1",
     "tcdC_wt",
     "tcdC_junction",
     "cdtA_groupA",
     "cdtB_groupA",
     "tpiA_all",
-    "sodA_all",
-    "16S_all",
+    "rpoB_all",
 ]
 
 # =============================================================================

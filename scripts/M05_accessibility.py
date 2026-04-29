@@ -161,7 +161,7 @@ def run_rnaplfold(sequence: str,
             "RNAplfold",
             "-W", str(window),
             "-L", str(span),
-            "-u", "1",           # compute unpaired probabilities
+            "-u", "28",   # R3: window = spacer length (Lorenz 2011)           # compute unpaired probabilities
             "--noLP",            # no lonely base pairs
         ]
 
@@ -230,7 +230,7 @@ def parse_lunp(lunp_path: Path) -> pd.DataFrame:
                 continue
             try:
                 pos  = int(parts[0])
-                prob = float(parts[1])   # l=1 column
+                prob = float(parts[28])   # R3: read l=28 column   # l=1 column
                 rows.append({"position": pos, "unpaired_prob": prob})
             except ValueError:
                 continue

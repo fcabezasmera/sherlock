@@ -44,15 +44,15 @@ MIN_SEQS            = 5    # minimum sequences to attempt alignment
 # Concatenation map: {output_name: [input_stems_from_M03]}
 # Each output → one MAFFT alignment → one crRNA target
 CONCAT_MAP = {
-    "tcdA_all":       ["tcdA_groupA",        "tcdA_groupB"],
-    "tcdB_all":       ["tcdB_groupA",        "tcdB_groupB"],
+    "tcdA_all":       ["tcdA_groupA",   "tcdA_groupB"],
+    "tcdB_clade2":    ["tcdB_groupA"],                    # RT027-like (hypervirulent)
+    "tcdB_clade1":    ["tcdB_groupB"],                    # RT012-like (classic)
     "tcdC_wt":        ["tcdC_groupB"],
     "tcdC_junction":  ["tcdC_junction_groupA"],
     "cdtA_groupA":    ["cdtA_groupA"],
     "cdtB_groupA":    ["cdtB_groupA"],
     "tpiA_all":       ["tpiA_groupA", "tpiA_groupB", "tpiA_groupC"],
-    "sodA_all":       ["sodA_groupA", "sodA_groupB", "sodA_groupC"],
-    "16S_all":        ["16S_groupA",  "16S_groupB",  "16S_groupC"],
+    "rpoB_all":       ["rpoB_groupA", "rpoB_groupB", "rpoB_groupC"],
 }
 
 # Nucleotide physicochemical groups for Trident index
@@ -75,6 +75,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy import stats
+from statsmodels.stats.multitest import multipletests
 from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).parent))
@@ -244,11 +245,16 @@ def compute_conservation(sequences: list, length: int,
         try:
             _, p = stats.mannwhitneyu(wv, background, alternative="less")
             wilcox_p.append(float(p))
-            wilcox_sig.append(bool(p < 0.05))
+            wilcox_sig.append(False)  # placeholder, corrected below
         except Exception:
             wilcox_p.append(float("nan"))
             wilcox_sig.append(False)
 
+    # R2: FDR correction (Benjamini & Hochberg 1995)
+    pvals_clean = [p if p == p else 1.0 for p in wilcox_p]  # replace NaN
+    if any(p < 1.0 for p in pvals_clean):
+        _, pvals_corr, _, _ = multipletests(pvals_clean, method="fdr_bh")
+        wilcox_sig = [bool(p < 0.05) for p in pvals_corr]
     return pd.DataFrame({
         "position":             range(1, length + 1),
         "shannon":              shannons,
