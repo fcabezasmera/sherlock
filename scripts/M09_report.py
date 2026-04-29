@@ -202,8 +202,13 @@ def make_html(df, rtqpcr_data, cfg, out_path, org):
         cons  = f"{r.get('conservation',0):.3f}" if not pd.isna(r.get('conservation',float('nan'))) else "n/a"
         amp   = str(r.get("amplicon_size","—"))
         dimer = str(r.get("dimerisation_pct","—"))
-        spec_detail = (f"nontox={r.get('nontox_specific','NA')} | entero={r.get('entero_specific','NA')} | "
-                       f"human={r.get('human_specific','NA')} | UHGG={r.get('uhgg_specific','NA')}")
+        def fmt_spec(v):
+            if v is None or str(v) in ("nan","NaN","NA",""): return "N/A"
+            return "OK" if str(v).lower() in ("true","1") else "FAIL"
+        spec_detail = (f"nontox={fmt_spec(r.get('nontox_specific'))} | "
+                       f"entero={fmt_spec(r.get('entero_specific'))} | "
+                       f"human={fmt_spec(r.get('human_specific'))} | "
+                       f"UHGG={fmt_spec(r.get('uhgg_specific'))}")
         rows_html.append(f"""
 <tr class="mr" onclick="toggle(this)">
   <td>{r['rank']}</td>
