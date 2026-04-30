@@ -1,29 +1,56 @@
 # SHERLOCK crRNA Design Pipeline v2.0
 
-**Computational pipeline for the design and in silico validation of CRISPR-Cas13a (SHERLOCK) diagnostic assays targeting toxigenic *Clostridioides difficile* from Chilean clinical fecal samples.**
-
-> **Author:** Fausto Cabezas-Mera  
-> **Affiliation:** [your institution]  
-> **Status:** Pre-publication — in preparation  
-> **GitHub:** [github.com/fcabezasmera/sherlock](https://github.com/fcabezasmera/sherlock)
+**Computational pipeline for the design and in silico validation of a multiplexed CRISPR-Cas13a (SHERLOCK) diagnostic assay targeting toxigenic *Clostridioides difficile* from Chilean clinical fecal samples.**
 
 ---
 
-## Background
+## Authors
 
-*Clostridioides difficile* infection (CDI) is the leading cause of healthcare-associated diarrhea worldwide, responsible for significant morbidity and mortality, particularly in elderly and immunocompromised patients. In Chile, the epidemiological landscape is dominated by the hypervirulent ribotype RT027 (PCR ribotype 027, NAP1/BI/027 lineage), which produces both major toxins (TcdA, TcdB) and the binary toxin CDT, contributing to increased disease severity and recurrence.
+**Fausto Sebastián Cabezas-Mera**  
+Doctoral Candidate — Doctorado en Informática Aplicada a Salud y Medio Ambiente  
+Departamento de Informática y Computación, Facultad de Ingeniería  
+Universidad Tecnológica Metropolitana (UTEM), Santiago, Chile  
+[fcabezasme@utem.cl](mailto:fcabezasme@utem.cl) · ORCID: [0000-0002-3064-7089](https://orcid.org/0000-0002-3064-7089) · [github.com/fcabezasmera](https://github.com/fcabezasmera)
 
-Current diagnostic algorithms rely on multi-step approaches combining nucleic acid amplification tests (NAATs), enzyme immunoassays (EIA) for glutamate dehydrogenase (GDH), and toxin detection. While NAATs are highly sensitive, they detect toxin genes without distinguishing between active toxin production and asymptomatic carriage — a clinically significant limitation.
+**Ana Rosa Moya-Beltrán, Ph.D.** *(Thesis supervisor · Co-investigator)*  
+Research Assistant Professor — Bioinformática y Microbiología Computacional  
+Departamento de Informática y Computación, Facultad de Ingeniería  
+Universidad Tecnológica Metropolitana (UTEM), Santiago, Chile  
+[amoya@utem.cl](mailto:amoya@utem.cl) · [Google Scholar](https://scholar.google.com/citations?user=vYrLnT4AAAAJ)  
+Premio Mejor Tesis Doctoral en Microbiología, SOMICH 2022 · Secretaria SCB 2024–2025
 
-SHERLOCK (Specific High-sensitivity Enzymatic Reporter UnLOCKing), based on LwCas13a collateral RNA cleavage, offers single-molecule sensitivity (~2 aM), single-nucleotide mismatch specificity, and compatibility with lateral flow readout — making it an ideal platform for point-of-care CDI diagnostics targeting mRNA (active transcription) rather than genomic DNA.
+---
 
-This pipeline implements a rigorous, reproducible computational workflow for the design of crRNA spacers and RT-RPA primers for a multiplexed SHERLOCK panel targeting toxigenic *C. difficile* from Chilean clinical context.
+## Project Context
+
+This pipeline constitutes the **in silico crRNA design component (Specific Aim 1)** of the project:
+
+> *"Diseño e implementación de una plataforma de detección molecular sensible y específica de cepas toxigénicas de* Clostridioides difficile *desde muestras clínicas, mediante un sistema CRISPR-Cas"*  
+> **Concurso Endowment I+D Investigación Clínica para la Salud 2025, Universidad Andrés Bello (UNAB)**
+
+**Principal Investigator:** Dr. Iván Calderón Lizana — Centro de Investigación de Resiliencia a Pandemias, Facultad de Ciencias de la Vida, UNAB  
+**Co-investigators:** Dra. Lillian Acuña Olivares (UNAB) · Dra. Ana Rosa Moya-Beltrán (UTEM) · Dra. Paola Pidal Méndez (Clínica Indisa) · Dra. Erna Cona Trujillo (Clínica Indisa)  
+**Clinical partner:** Clínica Indisa, Unidad de Control de Infecciones Asociadas a la Atención de Salud (IAAS), Santiago, Chile
+
+The experimental validation of the designed crRNAs and RT-RPA primers (Specific Aim 2) will be conducted at UNAB and Clínica Indisa using clinical fecal samples from hospitalized patients with suspected CDI, employing the LwCas13a protein purified by the Calderón laboratory (plasmid pC013-huLwCas13a).
+
+**Status:** In preparation for publication · Pipeline v2.0 · April 2026
+
+---
+
+## Background and Clinical Motivation
+
+*Clostridioides difficile* infection (CDI) is the leading cause of antibiotic-associated diarrhea in healthcare settings worldwide, responsible for substantial morbidity, mortality, and healthcare costs. In Chile, the epidemiological landscape is dominated by the hypervirulent ribotype RT027 (NAP1/BI/ST1 lineage), which produces both major toxins (TcdA, TcdB) and the binary toxin CDT. After the major RT027 outbreak of 2012 — the largest recorded in Chilean history, with 79% incidence of the NAP1/ST1 strain — sustained high rates of CDI incidence and recurrence persist, without access to rapid, specific diagnostic tools that differentiate toxigenic from non-toxigenic strains.
+
+The critical diagnostic gap addressed by this project is the absence of nucleic acid amplification tests that determine whether toxin genes are **actively expressed** (toxigenic strains) versus merely present in the genome. Current NAATs detect toxin genes but cannot distinguish active CDI from asymptomatic carriage — a clinically significant limitation that can lead to both overdiagnosis and inappropriate antibiotic use.
+
+SHERLOCK (Specific High-sensitivity Enzymatic Reporter UnLOCKing), based on the RNA-guided collateral cleavage activity of LwCas13a, directly detects mRNA transcripts rather than genomic DNA, offering: attomolar sensitivity (~2 aM), single-nucleotide mismatch specificity, isothermal operation at 37°C (no thermocycler required), and lateral flow readout compatibility — making it ideal for point-of-care CDI diagnostics. The Calderón group has previously demonstrated the feasibility of SHERLOCK for detecting bacterial transcripts from a fish pathogen (*Yersinia ruckeri*) with sensitivity comparable to RT-qPCR and lateral flow readout (Calderón et al. 2024, *Microorganisms*).
 
 ---
 
 ## Reaction Design
 
-Two-reaction multiplexed panel using LwCas13a exclusively (Option C):
+Two-reaction multiplexed panel using LwCas13a exclusively (Option C — single ortholog, dual reaction):
 
 | Reaction | Targets | Clinical rationale |
 |---|---|---|
@@ -31,10 +58,14 @@ Two-reaction multiplexed panel using LwCas13a exclusively (Option C):
 | **B** | tcdC_WT · tcdC_RT027_junction · cdtA · cdtB · tpiA | Hypervirulence characterization + epidemiological typing |
 
 **Key design decisions:**
-- **tcdB split by clade** (RT027/clade2 vs RT012/clade1): TcdB from RT027 and RT012 lineages shows significant sequence divergence that reduces single-crRNA sensitivity. Separate crRNA pairs achieve ≥98% sensitivity per clade (Rupnik et al. 2019).
-- **rpoB as internal control** (replaces 16S rRNA): rpoB is present in 99.6% of *C. difficile* isolates (vs universally in all gut bacteria), providing species-level confirmation without the cross-reactivity inherent to 16S-based controls.
-- **tcdC RT027 junction**: Targets the 18-bp deletion site in tcdC that defines the RT027/hypervirulent lineage — enables ribotype inference in a single reaction.
-- **mRNA as target**: Detecting toxin mRNA (rather than genomic DNA) differentiates active toxigenic strains from asymptomatic carriers, addressing the key limitation of current NAAT-based methods.
+
+**tcdB split by clade** — TcdB from RT027 (clade 2) and RT012 (clade 1) lineages shows significant sequence divergence in the receptor-binding and glucosyltransferase domains (Rupnik et al. 2009; Smits et al. 2016). A single pan-tcdB crRNA reduces sensitivity to ≤86% in silico; separate clade-specific crRNAs achieve ≥98% sensitivity per clade.
+
+**rpoB as species-internal control** — Replaces 16S rRNA as the internal extraction/reaction control. rpoB is present in 99.6% of *C. difficile* isolates (Almeida et al. 2026, *Front Cell Infect Microbiol*) and is sufficiently divergent from other gut bacteria to provide species-level confirmation, avoiding the cross-reactivity inherent to 16S-based controls in polymicrobial fecal matrices.
+
+**tcdC RT027 junction** — Targets the 18-bp deletion in tcdC that defines the RT027 hypervirulent lineage, enabling ribotype inference within a single SHERLOCK reaction.
+
+**mRNA as target** — Detection of toxin mRNA directly demonstrates active transcription, differentiating CDI from asymptomatic colonization — the principal limitation of current DNA-based NAATs in Chile.
 
 ---
 
@@ -43,14 +74,12 @@ Two-reaction multiplexed panel using LwCas13a exclusively (Option C):
 ### Prerequisites
 
 ```bash
-# Clone repository
 git clone https://github.com/fcabezasmera/sherlock.git
 cd sherlock
 
-# Create conda environments
 conda env create -f envs/sherlock.yml   # main environment
-conda env create -f envs/adapt.yml      # ADAPT crRNA design
-conda env create -f envs/RPA.yml        # PrimedRPA (numpy compatibility fix)
+conda env create -f envs/adapt.yml      # ADAPT crRNA design (LwCas13a model)
+conda env create -f envs/RPA.yml        # PrimedRPA (numpy compatibility)
 ```
 
 ### Required tools
@@ -60,19 +89,19 @@ conda env create -f envs/RPA.yml        # PrimedRPA (numpy compatibility fix)
 | NCBI datasets | ≥15.0 | sherlock | Genome download |
 | MAFFT | ≥7.505 | sherlock | Multiple sequence alignment |
 | RNAplfold | ≥2.6.4 | sherlock | mRNA accessibility profiling |
-| ADAPT | ≥1.4.0 | adapt | crRNA design (LwCas13a model) |
-| PrimedRPA | ≥1.0.3 | RPA | RT-RPA primer design |
-| BLAST+ | ≥2.13.0 | sherlock | Specificity analysis |
+| ADAPT | ≥1.4.0 | adapt | crRNA design (LwCas13a model, Metsky 2022) |
+| PrimedRPA | ≥1.0.3 | RPA | RT-RPA primer co-design |
+| BLAST+ | ≥2.13.0 | sherlock | Specificity analysis (4 databases) |
 | seqkit | ≥2.4.0 | sherlock | Sequence manipulation |
-| Primer3 | ≥2.6.0 | sherlock | RT-qPCR primer design |
-| RNAfold | ≥2.6.4 | sherlock | crRNA secondary structure |
-| statsmodels | ≥0.13 | sherlock | FDR correction (M04) |
+| Primer3 | ≥2.6.0 | sherlock | RT-qPCR reference primer design |
+| RNAfold | ≥2.6.4 | sherlock | crRNA secondary structure analysis |
+| statsmodels | ≥0.13 | sherlock | FDR correction (Benjamini-Hochberg) |
 
 ---
 
 ## Configuration
 
-All parameters are centralized in `config.yaml`. Key sections:
+All parameters are centralized in `config.yaml`. Critical parameters:
 
 ```yaml
 organism:
@@ -80,22 +109,23 @@ organism:
   display:   "Clostridioides difficile"
 
 crna:
-  dr:  "GGGGAUUUAGACUACCCCAAAAACGAAGGGGGGACUAAAAC"   # LwCas13a DR (Gootenberg 2017)
-  t7:  "AATTCTAATACGACTCACTATAGG"                     # T7 promoter
-  gc_min:        0.25    # adapted for C. difficile 29% GC genome
-  gc_max:        0.65
-  u_frac_max:    0.50    # T7 termination prevention (Milligan 1987)
-  g_pos1_penalty: -0.05  # G at position 1 reduces LwCas13a activity (Wessels 2020)
+  dr:  "GGGGAUUUAGACUACCCCAAAAACGAAGGGGGGACUAAAAC"  # LwCas13a DR (Gootenberg 2017)
+  t7:  "AATTCTAATACGACTCACTATAGG"                    # T7 promoter
+  gc_min:         0.25    # adapted for C. difficile 29% GC genome (Wessels 2020)
+  gc_max:         0.65
+  u_frac_max:     0.50    # T7 termination prevention (Milligan 1987)
+  g_pos1_penalty: -0.05   # G at pos1 reduces LwCas13a activity ~30-40% (Wessels 2020)
 
 accessibility:
   window:   80
   span:     40
-  u_window: 28    # spacer length for RNAplfold -u parameter (Lorenz 2011)
+  u_window: 28    # spacer length — critical fix: was 1, must equal spacer len (Lorenz 2011)
+  min_acc:  0.01  # relative threshold; absolute values low with -u 28
 
 primers:
   rpa_env:     "RPA"
   amplicon_min: 100
-  amplicon_max: 250    # relaxed for cdtA (short gene)
+  amplicon_max: 250
 ```
 
 ---
@@ -105,14 +135,14 @@ primers:
 ```bash
 conda activate sherlock
 
-# M01-M05: genome download through accessibility profiling
+# M01-M05: genome acquisition through accessibility profiling
 python3 scripts/M01_download.py      --config config.yaml
 python3 scripts/M02_classify.py      --config config.yaml
 python3 scripts/M03_extract.py       --config config.yaml
 python3 scripts/M04_alignment.py     --config config.yaml
 python3 scripts/M05_accessibility.py --config config.yaml
 
-# M06: crRNA design (requires ADAPT environment)
+# M06: crRNA design (ADAPT environment required)
 conda run -n adapt \
     python3 scripts/M06_crna.py      --config config.yaml
 
@@ -125,7 +155,7 @@ python3 scripts/M11_rtqpcr.py        --config config.yaml
 python3 scripts/M12_validation.py    --config config.yaml
 ```
 
-### Re-run flags (skip completed steps)
+### Re-run flags
 
 ```bash
 python3 scripts/M06_crna.py        --config config.yaml --skip-adapt
@@ -139,17 +169,17 @@ python3 scripts/M12_validation.py  --config config.yaml --skip-structure
 ## Pipeline Modules
 
 ### M01 — Genome Download
-Downloads *C. difficile* genomes (Complete + Chromosome assembly level) from NCBI RefSeq using `datasets`. Includes 12 Chilean clinical strains (all publicly available as of April 2026, deposited by the Paredes-Sabja group, Universidad de Santiago de Chile) and 5 anchor reference strains.
+Downloads *C. difficile* genomes (Complete + Chromosome assembly level) from NCBI RefSeq using `datasets`. Includes 12 Chilean clinical strains (NCBI, April 2026) and 5 curated anchor references.
 
 **Anchor references:**
 
-| Strain | Ribotype | Significance | Accession |
+| Strain | Ribotype | Clinical relevance | Accession |
 |---|---|---|---|
 | R20291 | RT027 | Hypervirulent epidemic reference | GCF_015732555.1 |
-| CD196 | RT027 | Historical RT027 outbreak | GCF_021378415.1 |
-| CD630Derm | RT012 | Classic toxigenic reference | GCF_000953275.1 |
-| DSM27639 | RT012 | RT012 reference | GCF_003313565.1 |
-| L-NTCD03 | Non-tox | Non-toxigenic reference | GCF_951803555.1 |
+| CD196 | RT027 | Historical RT027 outbreak isolate | GCF_021378415.1 |
+| CD630Derm | RT012 | Classical toxigenic reference | GCF_000953275.1 |
+| DSM27639 | RT012 | RT012 clade 1 reference | GCF_003313565.1 |
+| L-NTCD03 | Non-tox | Non-toxigenic negative control | GCF_951803555.1 |
 
 **Output:** `main/data/01_download/genomes/{working,chilean,anchors}/`
 
@@ -157,191 +187,126 @@ Downloads *C. difficile* genomes (Complete + Chromosome assembly level) from NCB
 
 ### M02 — Genome Classification
 
-Classifies genomes into three functional groups based on toxin gene complement:
-
 | Group | Label | Criteria | n |
 |---|---|---|---|
-| **A** | Hypervirulent (RT027-like) | tcdB complete + cdtA/cdtB present + tcdC non-functional | 106 |
-| **B** | Toxigenic (RT012-like) | tcdB complete + no binary toxin | 142 |
-| **C** | Non-toxigenic | tcdB absent/non-functional | 52 |
+| **A** | Hypervirulent (RT027-like, clade 2) | tcdB complete + cdtA/cdtB present + tcdC non-functional (18-bp deletion) | 106 |
+| **B** | Toxigenic (RT012-like, clade 1) | tcdB complete + no binary toxin | 142 |
+| **C** | Non-toxigenic | tcdB absent or non-functional | 52 |
 
-Classification logic based on GFF gene= and product= attributes. sodA and tpiA treated as housekeeping genes (present in all groups). rpoB detected via `product=DNA-directed RNA polymerase subunit beta` for genomes without explicit `gene=rpoB` annotation.
-
-**Output:** `main/data/02_classify/gene_matrix.tsv`, `groupA/B/C.txt`
+rpoB and tpiA detected via `gene=` attribute with `product=` fallback for genomes lacking explicit gene annotation. Housekeeping genes bypass gene_matrix filter (present in all groups by definition).
 
 ---
 
 ### M03 — CDS Extraction
-Extracts coding sequences for 7 target genes per group from GFF + FASTA using seqkit. Housekeeping genes (rpoB, tpiA) bypass the gene_matrix filter (present in all groups by definition).
-
-**Targets:** tcdA, tcdB, tcdC, tcdC_junction, cdtA, cdtB, tpiA, rpoB
-
-**Output:** `main/data/03_extract/{gene}_{group}.fasta`
+Extracts coding sequences per gene per group from GFF + FASTA. Key implementation: rpoB identified via `product=DNA-directed RNA polymerase subunit beta` (exact match, excluding rpoC) for genomes without explicit `gene=rpoB` annotation, achieving 288/290 genome coverage — equivalent to 16S rRNA.
 
 ---
 
 ### M04 — Multiple Sequence Alignment + Conservation
+MAFFT (--localpair for n≤200; --auto for n>500) + per-position Shannon entropy. Wilcoxon rank-sum test with **Benjamini-Hochberg FDR correction** (α=0.05) for identification of significantly variable windows (correction for ~1,500 tests per gene; Benjamini & Hochberg 1995).
 
-Concatenates sequences by diagnostic target, aligns with MAFFT (--localpair --maxiterate 1000 for n≤200; --auto for n>500), and computes per-position conservation metrics:
-
-- **Shannon entropy** (H): position-wise nucleotide diversity
-- **Wilcoxon rank-sum test** with Benjamini-Hochberg FDR correction (α=0.05) for identification of significantly variable windows
-
-**9 MSA targets:**
-
-| Target | Source groups | Sequences | Length |
-|---|---|---|---|
-| tcdA_all | groupA + groupB | ~220 | ~8,200 bp |
-| tcdB_clade2 | groupA only | ~106 | ~7,200 bp |
-| tcdB_clade1 | groupB only | ~142 | ~7,200 bp |
-| tcdC_wt | groupB | ~140 | ~800 bp |
-| tcdC_junction | groupA | ~98 | ~1,100 bp |
-| cdtA_groupA | groupA | ~104 | ~1,500 bp |
-| cdtB_groupA | groupA | ~105 | ~2,700 bp |
-| tpiA_all | groupA+B+C | ~300 | ~850 bp |
-| rpoB_all | groupA+B+C | ~298 | ~3,800 bp |
-
-**Output:** `main/data/04_alignment/msa/*.aln`, `conservation/*.tsv`
+**9 MSA targets:** tcdA_all · tcdB_clade2 · tcdB_clade1 · tcdC_wt · tcdC_junction · cdtA_groupA · cdtB_groupA · tpiA_all · rpoB_all
 
 ---
 
-### M05 — mRNA Accessibility
+### M05 — mRNA Accessibility (RNAplfold)
+Computes unpaired probability profiles (W=80, L=40, **-u 28**, --noLP). The parameter `-u 28` equals spacer length and measures the probability that a full 28-nt window is simultaneously unpaired — the physically relevant quantity for Cas13a binding. Prior implementations using `-u 1` (single-base probability) underestimate steric constraints on crRNA-target hybridization (Lorenz et al. 2011).
 
-Computes per-position unpaired probability profiles using RNAplfold (W=80, L=40, **-u 28**, --noLP). The critical parameter `-u 28` (equal to spacer length) measures the probability that a 28-nt window is simultaneously unpaired — the physically relevant quantity for Cas13a binding (Lorenz et al. 2011). Previous versions incorrectly used `-u 1`.
-
-Generates consensus sequences (majority rule per position) for use in M11 Primer3 design.
-
-**Output:** `main/data/05_accessibility/{target}_accessibility.tsv`, `{target}_consensus.fasta`
+Generates consensus sequences (majority-rule) for M11 Primer3 design.
 
 ---
 
 ### M06 — crRNA Design (ADAPT)
+`maximize-activity` mode, LwCas13a activity model (Metsky et al. 2022), sliding window W=250, guide length 28nt.
 
-Designs crRNA spacers using ADAPT (Metsky et al. 2022, *Nat Biotechnol*) in `maximize-activity` mode with the LwCas13a activity prediction model. Sliding window: W=250, guide length 28nt.
+**Composite scoring:**
 
-**Composite scoring (post-ADAPT ranking):**
-
-| Component | Weight | Rationale |
+| Component | Weight | Reference |
 |---|---|---|
-| ADAPT activity (norm) | 0.55 | Direct LwCas13a activity prediction |
-| mRNA accessibility (norm) | 0.35 | RNAplfold -u 28 profile |
-| GC score | 0.10 | Optimal 25-65% for C. diff (Wessels 2020) |
-| G at position 1 | −0.05 | Reduces LwCas13a activity ~30-40% (Wessels 2020) |
+| ADAPT predicted activity (normalized) | 0.55 | Metsky et al. 2022 |
+| mRNA accessibility (normalized, -u 28) | 0.35 | Lorenz et al. 2011 |
+| GC score (25–65% optimal range) | 0.10 | Wessels et al. 2020 |
+| G at spacer position 1 penalty | −0.05 | Wessels et al. 2020 |
 
-**Filters applied:**
-- GC content: 25–65% (adapted for C. difficile 29% GC genome)
-- Poly-U: ≤3 consecutive U (T7 termination prevention)
-- Total U fraction: ≤50% (Milligan 1987)
+**Filters:** GC 25–65% (adapted for *C. difficile* 29% GC) · poly-U ≤3 consecutive · total U fraction ≤50% (Milligan 1987)
 
-**Output:** `main/data/06_crna/{target}_adapt.tsv` (all windows), `{target}_candidates.tsv` (top-10)  
-**Result:** 90 crRNA candidates (10 per target)
+**Result:** 90 crRNA candidates, 10 per target
 
 ---
 
 ### M07 — RT-RPA Primer Co-Design (PrimedRPA)
 
-Designs RT-RPA primer pairs using PrimedRPA (Higgins et al. 2019, *Bioinformatics*) on the full MSA. Uses an **inverse co-design strategy**: PrimedRPA identifies conserved primer-binding regions genome-wide, then the best ADAPT-predicted crRNA within each amplicon is selected. This ensures every reported candidate has an experimentally actionable primer+crRNA pair.
+**Inverse co-design strategy:** PrimedRPA identifies conserved primer-binding regions genome-wide on the full MSA, then the highest-scoring ADAPT crRNA within each amplicon is selected. This guarantees every reported candidate has an experimentally validated, co-localized primer+crRNA pair.
 
-**Parameters:** PrimerLength=32, IdentityThreshold=0.95, AmpliconSizeLimit=250, MSA mode  
-**Environment:** conda `RPA` (separate from main due to numpy≥1.24 incompatibility)
+Parameters: PrimerLength=32 · IdentityThreshold=0.95 · AmpliconSizeLimit=250
 
 **crRNA synthesis format** (Kellner et al. 2019, *Nat Protoc*):
 ```
-Order to IDT as ssDNA Ultramer:
-  RC( T7_promoter + DR_DNA + spacer_DNA )
+IDT order: ssDNA Ultramer = RC( T7_promoter + DR_DNA + spacer_DNA )
+T7 transcription produces: DR_RNA + spacer_RNA  →  functional crRNA
 
-T7 RNA polymerase produces functional crRNA:
-  DR_RNA + spacer_RNA
-
-RPA Forward primer:  5'─[AATTCTAATACGACTCACTATAGG]─[FP sequence]─3'
-RPA Reverse primer:  5'─[RP sequence]─3'
+RPA FP:  5'─[AATTCTAATACGACTCACTATAGG]─[FP sequence]─3'
+RPA RP:  5'─[RP sequence]─3'
 crRNA spacer: complementary to RNA transcribed from RPA amplicon
 ```
 
-**Output:** `main/data/07_primers/all_codesign.tsv` (586 co-designs)
+**Result:** 586 co-designs across 9 targets
 
 ---
 
 ### M08 — Specificity Analysis
 
-BLAST-based specificity validation (blastn-short, word_size=7, evalue=0.01) against four databases:
+| Database | Source | Scope |
+|---|---|---|
+| Non-toxigenic *C. difficile* (Group C) | NCBI | 52 genomes (informational) |
+| Enteric pathogens | NCBI RefSeq | 11 species* |
+| Human transcriptome | GRCh38 RefSeq mRNA | Complete |
+| Human gut microbiome | UHGG v2.0.2 | 4,742 species representatives (excl. *C. difficile*) |
 
-| Database | Source | Sequences | Rejection criterion |
-|---|---|---|---|
-| Non-toxigenic *C. difficile* (Group C) | NCBI | 52 genomes | Informational only |
-| Enteric pathogens | NCBI RefSeq | 11 species* | ≥90% identity · ≥80% coverage · start ≤pos5 |
-| Human transcriptome | GRCh38 RefSeq mRNA | — | idem |
-| Human Gut Microbiome | UHGG v2.0.2 | 4,742 species reps (excl. *C. difficile*) | idem |
+*blastn-short, word_size=7, evalue=0.01. Rejection: ≥90% identity · ≥80% crRNA coverage · alignment start ≤position 5*
 
-*Enteric pathogens: *C. sordellii*, *C. perfringens*, *C. botulinum*, *E. faecalis*, *E. faecium*, *K. pneumoniae*, *E. coli* O157, *S. enterica*, *C. jejuni*, *L. monocytogenes*, *S. aureus*
+**Database skip rules:** nontox skipped for all toxin targets · enteropathogens + UHGG skipped for rpoB and tpiA (housekeeping genes expected in Clostridiales)
 
-**Database-specific rules:**
-- Non-toxigenic check: skipped for all toxin targets (expected hits due to gene remnants)
-- Enteropathogens: skipped for rpoB (universal housekeeping gene)
-- UHGG: skipped for tpiA and rpoB (expected in gut Clostridiales)
-
-**Result:** 87/90 crRNAs pass all applicable specificity checks  
-**Notable exceptions:** 1 tpiA crRNA cross-reacts with *C. botulinum* tpiA (phylogenetic proximity within Clostridiales); 1 cdtA crRNA cross-reacts with *Acutalibacter* sp. (Oscillospirales gut bacterium with partial cdtA homology)
+**Result:** 87/90 crRNAs pass all applicable checks (96.7%)
 
 ---
 
 ### M09 — Ranking + Comprehensive Report
 
-Integrates M07 co-designs as primary source, enriched with ADAPT scores (M06) and specificity (M08). Each reported candidate is a complete, experimentally actionable set: crRNA + RT-RPA primer pair validated to co-localize within the same amplicon.
+Integrates M07 co-designs (primary source) with ADAPT scores (M06) and specificity (M08). Each candidate is a complete, experimentally actionable set.
 
-**Ranking composite score:**
+**Ranking:** ADAPT activity 35% · Conservation 20% · Specificity 15% · Primer co-design 10%
 
-| Component | Weight |
-|---|---|
-| ADAPT activity | 35% |
-| Conservation (1 − mean Shannon H) | 20% |
-| Specificity (pass/fail) | 15% |
-| Primer co-design (always 1.0 here) | 10% |
-
-**Outputs:**
-- `final_ranking.tsv` — 32 final candidates with all sequences
-- `final_ranking.html` — interactive report (click row to expand IVT template, FP+T7, RP)
-- `IDT_order_crRNA.tsv` — IVT templates ready for IDT ordering (ssDNA Ultramer)
-- `IDT_order_primers.tsv` — RPA primers + RT-qPCR primers for IDT ordering
+**Outputs:** `final_ranking.tsv` · `final_ranking.html` (interactive) · `IDT_order_crRNA.tsv` · `IDT_order_primers.tsv`
 
 ---
 
 ### M10 — Synthetic Positive Controls
-Generates IVT template DNA and synthetic target RNA templates for each final candidate. Used as positive controls in experimental SHERLOCK reactions.
+IVT template DNA + synthetic target RNA for each final candidate. Used as positive controls in experimental SHERLOCK reactions at UNAB/Clínica Indisa.
 
-**Validation (M12 Section B):** 32/32 PASS (T7 present, 0mm crRNA detection, poly-U/GC acceptable)
+**Validation:** 32/32 PASS (T7 present · 0mm crRNA detection · poly-U/GC acceptable)
 
 ---
 
 ### M11 — RT-qPCR Reference Primers
-Designs RT-qPCR primer pairs for 8 genes using Primer3 on M05 consensus sequences. Serves as gold-standard comparator for SHERLOCK validation in clinical samples.
+Primer3 on M05 consensus sequences. 8 genes: tcdA · tcdB_clade1 · tcdB_clade2 · tcdC · cdtA · cdtB · tpiA · rpoB.  
+Parameters: Tm=60°C ±2°C · amplicon 80–200bp · GC 45–65%
 
-**Parameters:** Tm = 60°C ±2°C, amplicon 80–200bp, GC 45–65%  
-**Genes:** tcdA · tcdB_clade1 · tcdB_clade2 · tcdC · cdtA · cdtB · tpiA · rpoB  
-**Validation (M12 Section C):** 8/8 PASS (amplicons confirmed in silico, ΔTm <1.5°C for all pairs)
+**Validation:** 8/8 PASS (amplicons confirmed in silico · ΔTm <1.5°C all pairs)
 
 ---
 
 ### M12 — In Silico Validation
 
-Comprehensive validation of all designed components:
+| Section | Method | Result |
+|---|---|---|
+| **A. crRNA (32 candidates)** | Sensitivity (Hamming ≤1mm) · IVT integrity · RNAfold structure · M07 amplicon check | 2 PASS · 28 WARN · 2 FAIL |
+| **B. Synthetic controls (M10)** | T7 presence · 0mm detection · poly-U · GC | 32/32 PASS |
+| **C. RT-qPCR primers (M11)** | seqkit amplicon on consensus · size 80–200bp · ΔTm | 8/8 PASS |
 
-**Section A — crRNA validation (32 candidates):**
+**FAIL candidates** (excluded from synthesis): tcdA_all rank3 (86.0% sensitivity) · tcdC_wt rank3 (87.9%). Ranks 1–2 of all 9 targets meet all primary criteria.
 
-| Check | Method | Threshold | Result |
-|---|---|---|---|
-| Sensitivity | Hamming sliding window vs M03 sequences | ≥90% at ≤1mm | PASS=2, WARN=28, FAIL=2 |
-| IVT integrity | RC(template) = T7+DR+spacer; poly-U; GC | — | All correct |
-| crRNA structure | RNAfold spacer stem analysis | <10nt in stem | Warns in 12/32 |
-| RPA amplicon | M07 amplicon_size verification | 100–250bp | All have amplicons |
-
-**Result interpretation:**
-- **2 FAIL** (tcdA rank3: 86.0%; tcdC_wt rank3: 87.9%) — excluded from synthesis
-- **28 WARN** — primarily low GC (expected for C. difficile AT-rich genome) and stem warnings from RNAfold. Not grounds for exclusion; prioritize ranks 1–2 per target
-- Ranks 1–2 of all 9 targets meet all primary criteria
-
-**Section B:** 32/32 synthetic controls PASS  
-**Section C:** 8/8 RT-qPCR primers PASS
+**WARN interpretation:** 28/32 WARNs are predominantly low GC (expected for *C. difficile* AT-rich genome, 29% GC) and RNAfold stem warnings. These are synthesis and folding advisories, not evidence of functional failure. Ranks 1–2 per target are prioritized for experimental synthesis.
 
 ---
 
@@ -350,15 +315,15 @@ Comprehensive validation of all designed components:
 | Metric | Value |
 |---|---|
 | Genomes analyzed | 305 (288 global NCBI + 12 Chilean + 5 anchors) |
-| Genome groups | A=106 (hypervirulent) · B=142 (toxigenic) · C=52 (non-toxigenic) |
-| Diagnostic targets | 9 (tcdA, tcdB×2, tcdC×2, cdtA, cdtB, tpiA, rpoB) |
-| crRNA candidates (ADAPT) | 90 (10 per target) |
+| Classification | Group A=106 (hypervirulent) · B=142 (toxigenic) · C=52 (non-toxigenic) |
+| Diagnostic targets | 9 across 2 LwCas13a reactions |
+| crRNA candidates (ADAPT) | 90 (10/target) |
 | RT-RPA co-designs | 586 |
 | Specificity pass rate | 87/90 (96.7%) |
 | **Final validated candidates** | **32 (crRNA + FP+T7 + RP per candidate)** |
 | Synthetic controls | 32/32 PASS |
 | RT-qPCR reference primers | 8/8 PASS |
-| crRNA validation | 2 PASS · 28 WARN · 2 FAIL |
+| crRNA in silico validation | 2 PASS · 28 WARN · 2 FAIL |
 
 ---
 
@@ -366,82 +331,88 @@ Comprehensive validation of all designed components:
 
 ```
 main/data/
-├── 01_download/     288 global + 12 Chilean + 5 anchor genomes
-├── 02_classify/     Groups A(106) / B(142) / C(52) + gene matrix
-├── 03_extract/      CDS per gene per group (~24 FASTA files)
-├── 04_alignment/    9 MSA + Shannon conservation profiles
+├── 01_download/      305 genomes (NCBI + Chilean + anchors)
+├── 02_classify/      Groups A/B/C + gene_matrix.tsv
+├── 03_extract/       CDS per gene per group
+├── 04_alignment/     9 MSA + Shannon conservation profiles
 ├── 05_accessibility/ RNAplfold -u 28 profiles + consensus sequences
-├── 06_crna/         90 crRNA candidates + full ADAPT TSVs
-├── 07_primers/      586 RT-RPA co-designs (PrimedRPA)
-├── 08_specificity/  Specificity vs 4 databases (BLAST)
-├── 09_report/       32 final candidates + HTML report + IDT sheets
-├── 10_synthetic/    Synthetic control templates (64 IDT oligos)
-├── 11_rtqpcr/       80 RT-qPCR primer pairs (8 genes × 10 pairs)
-└── 12_validation/   Validation report (HTML + TSV per section)
+├── 06_crna/          90 crRNA candidates + full ADAPT TSVs
+├── 07_primers/       586 RT-RPA co-designs (PrimedRPA)
+├── 08_specificity/   Specificity vs 4 databases + UHGG
+├── 09_report/        32 final candidates + HTML report + IDT sheets
+├── 10_synthetic/     Synthetic control templates (64 IDT oligos)
+├── 11_rtqpcr/        80 RT-qPCR primer pairs (8 genes × 10 pairs)
+└── 12_validation/    Validation HTML report + TSV per section
 ```
 
 ---
 
-## Key References
+## Evidence-Based Future Improvements
 
-1. Kellner MJ, Koob JG, Gootenberg JS, Abudayyeh OO, Zhang F. SHERLOCK: nucleic acid detection with CRISPR nucleases. *Nat Protoc*. 2019;14(10):2986–3012.
-2. Metsky HC, Welch NL, Pillai PP, et al. Designing sensitive viral diagnostics with efficient machine learning. *Nat Biotechnol*. 2022;40:1123–1131. (ADAPT)
-3. Higgins M, Ravenhall M, Ward D, Phelan J, Ibrahim A, Forrest MS, et al. PrimedRPA: primer design for recombinase polymerase amplification. *Bioinformatics*. 2019;35(4):682–684.
-4. Wessels HH, Méndez-Mancilla A, Guo X, Legut M, Daniloski Z, Bhatt DL, et al. Massively parallel Cas13 screens reveal principles for guide RNA design. *Nat Biotechnol*. 2020;38(6):722–727.
-5. Milligan JF, Groebe DR, Witherell GW, Uhlenbeck OC. Oligoribonucleotide synthesis using T7 RNA polymerase and synthetic DNA templates. *Nucleic Acids Res*. 1987;15(21):8783–8798.
-6. Lorenz R, Bernhart SH, Höner zu Siederdissen C, et al. ViennaRNA Package 2.0. *Algorithms Mol Biol*. 2011;6:26.
-7. Almeida A, Nayfach S, Boland M, et al. A unified catalog of 204,938 reference genomes from the human gut microbiome. *Nat Biotechnol*. 2021;39(1):105–114. (UHGG v2.0)
-8. Benjamini Y, Hochberg Y. Controlling the false discovery rate: a practical and powerful approach to multiple testing. *J R Stat Soc B*. 1995;57(1):289–300.
-9. Rupnik M, Wilcox MH, Gerding DN. *Clostridium difficile* infection: new developments in epidemiology and pathogenesis. *Nat Rev Microbiol*. 2009;7(7):526–536.
-10. Gootenberg JS, Abudayyeh OO, Lee JW, et al. Nucleic acid detection with CRISPR-Cas13a/C2c2. *Science*. 2017;356(6336):438–442.
+### High priority — Biological impact
+
+**1. MUSCLE5 alignment for tcdB clades (R1)**  
+MUSCLE5 (Edgar 2022, *Nat Commun*) outperforms MAFFT by 26% of correctly aligned columns in large divergent datasets. For tcdB_clade2 (RT027, n=106, >15% interlineage divergence), this improves ADAPT window scoring accuracy. Implementation: `muscle -super5 {input} -output {output} -threads 8`.
+
+**2. minimize-guides mode for tcdB (R9)**  
+ADAPT's `minimize-guides` mode with ≥95% coverage constraint (Metsky et al. 2022) guarantees detection of nearly all variants while minimizing crRNA count — critical for the high sequence diversity of tcdB across ribotypes.
+
+**3. Mutational robustness analysis**  
+Systematic in silico SNP introduction at each spacer position to map the seed region (positions 15–21, Wessels et al. 2020) and positions tolerant of 1 mismatch. Essential for predicting performance against emerging variants not represented in current genome collection, including novel Chilean isolates.
+
+### Medium priority — Computational precision
+
+**4. LinearCoPartition for crRNA-target binding (R5)**  
+LinearCoPartition (Zhang et al. 2023, *Nucleic Acids Res*) computes intermolecular base-pairing probabilities considering the secondary structures of both crRNA and target RNA simultaneously — physically more accurate than RNAplfold alone. Recommended for top-3 candidates per target in M12, not for full candidate set (computationally expensive).
+
+**5. Nearest-neighbor Tm for RPA primers (R12)**  
+SantaLucia 1998 nearest-neighbor model via BioPython `Tm_NN` with RPA buffer conditions (50mM Na⁺, 14mM Mg²⁺, 37°C) provides accurate Tm estimates. PrimedRPA's current GC-based Tm is heuristic; with the T7 overhang added to FP, effective Tm shifts substantially and ΔTm >5°C pairs should be flagged for asymmetric amplification risk.
+
+**6. NUPACK ΔG for dimer assessment (R13)**  
+NUPACK (Zadeh et al. 2011) calculates thermodynamically rigorous ΔG for FP-RP homo/heterodimer formation at 37°C under RPA buffer conditions. Rejection criterion: ΔG < −3 kcal/mol. The current PrimedRPA dimerisation score is heuristic and does not account for the T7 overhang.
+
+### Clinical and epidemiological expansion
+
+**7. Latin American genome expansion**  
+Current collection is dominated by European/North American submissions. Targeted inclusion of published Latin American sequences — particularly Chilean (PRJNA612578), Argentine, and Brazilian isolates — would improve conservation metrics for the regional clinical context and better represent the diversity of circulating strains in Chile.
+
+**8. Clinical sensitivity simulation**  
+Monte Carlo simulation of diagnostic sensitivity using allele frequency distributions from Chilean CDI surveillance data (ISP 2013–2018 bulletin). Accounts for co-infection, mixed ribotype samples, and the matrix inhibition effects of stool on RT-RPA amplification.
+
+**9. Nanopore amplicon sequencing integration**  
+SHERLOCK-positive RPA amplicons can be further characterized by Oxford Nanopore sequencing for simultaneous detection confirmation and ribotype-level typing. Pipeline extension with minimap2 + medaka for amplicon analysis would enable combined SHERLOCK + sequencing diagnostic workflows applicable to outbreak surveillance.
 
 ---
 
-## Proposed Future Improvements
+## References
 
-### High priority — Biological
-
-**1. MUSCLE5 alignment for tcdB (R1)**
-MUSCLE5 (Edgar 2022, *Nat Commun*) outperforms MAFFT by 26% of correctly aligned columns in large, divergent datasets. For tcdB_clade2 (RT027, n=106, ~7.2kb with interlineage divergence), this improvement is directly relevant to ADAPT window scoring accuracy.
-
-**2. minimize-guides mode for tcdB clades (R9)**
-Currently using `maximize-activity` which optimizes per-window. For the tcdB clades with known sequence diversity, ADAPT's `minimize-guides` mode with ≥95% coverage constraint (Metsky et al. 2022) would guarantee detection of nearly all variants while minimizing crRNA count — relevant for multiplex design.
-
-**3. Mutational robustness analysis**
-Systematic introduction of in silico SNPs at each spacer position to identify the seed region (positions 15–21, Wessels et al. 2020) and positions tolerant of 1 mismatch. Critical for predicting performance against emerging variants not represented in current genome collection.
-
-**4. Cas13design API scoring (R11)**
-The Wessels et al. 2020 neural network predictor (cas13design.nygenome.org), trained on 10,000+ LwCas13a crRNAs, provides orthogonal activity prediction to ADAPT. Note: trained on RfxCas13d primarily — use as secondary filter only.
-
-### Medium priority — Computational
-
-**5. LinearCoPartition for crRNA-target binding (R5)**
-LinearCoPartition (Zhang et al. 2023, *Nucleic Acids Res*) computes intermolecular base-pairing probabilities between crRNA and target RNA, accounting for both secondary structures simultaneously. More physically accurate than RNAplfold (which evaluates target accessibility without considering the crRNA). Computationally expensive (~1 min per pair) — recommended for top-3 candidates per target.
-
-**6. Nearest-neighbor Tm for RPA primers (R12)**
-PrimedRPA reports heuristic GC-based Tm. The SantaLucia 1998 nearest-neighbor model implemented via BioPython `Tm_NN` with RPA buffer conditions (50mM Na⁺, 14mM Mg²⁺, 37°C) would provide more accurate Tm estimates and flag asymmetric primer pairs (ΔTm >5°C) that could cause asymmetric amplification.
-
-**7. NUPACK ΔG for dimer assessment (R13)**
-NUPACK (Zadeh et al. 2011) calculates thermodynamically rigorous ΔG for homo/heterodimer formation at 37°C under RPA buffer conditions. Current PrimedRPA dimerisation score is heuristic. Threshold: ΔG < −3 kcal/mol as rejection criterion.
-
-### Lower priority — Clinical validation
-
-**8. Latin American genome expansion**
-Current collection is dominated by global NCBI submissions (primarily European/North American). Expanding to include published Latin American sequences (Argentina, Brazil, Colombia) would improve conservation metrics for Chilean clinical context. Key sources: SRA projects PRJNA612578 (Chile 2019), PRJNA614015 (Argentina).
-
-**9. Clinical sensitivity simulation**
-Monte Carlo simulation of diagnostic sensitivity using realistic allele frequency distributions from Chilean clinical surveillance data. Accounts for co-infection scenarios and stool sample matrix effects on crRNA accessibility.
-
-**10. Integration with Oxford Nanopore sequencing**
-SHERLOCK results can be confirmed in real-time using nanopore sequencing of RPA amplicons. Pipeline extension to generate amplicon-specific analysis workflows (minimap2 + medaka) would enable combined SHERLOCK + sequencing diagnostic protocols.
+1. Kellner MJ, Koob JG, Gootenberg JS, Abudayyeh OO, Zhang F. SHERLOCK: nucleic acid detection with CRISPR nucleases. *Nat Protoc.* 2019;14(10):2986–3012.
+2. Metsky HC, Welch NL, Pillai PP, et al. Designing sensitive viral diagnostics with efficient machine learning. *Nat Biotechnol.* 2022;40:1123–1131.
+3. Higgins M, Ravenhall M, Ward D, et al. PrimedRPA: primer design for recombinase polymerase amplification. *Bioinformatics.* 2019;35(4):682–684.
+4. Wessels HH, Méndez-Mancilla A, Guo X, et al. Massively parallel Cas13 screens reveal principles for guide RNA design. *Nat Biotechnol.* 2020;38(6):722–727.
+5. Milligan JF, Groebe DR, Witherell GW, Uhlenbeck OC. Oligoribonucleotide synthesis using T7 RNA polymerase and synthetic DNA templates. *Nucleic Acids Res.* 1987;15(21):8783–8798.
+6. Lorenz R, Bernhart SH, Höner zu Siederdissen C, et al. ViennaRNA Package 2.0. *Algorithms Mol Biol.* 2011;6:26.
+7. Benjamini Y, Hochberg Y. Controlling the false discovery rate: a practical and powerful approach to multiple testing. *J R Stat Soc B.* 1995;57(1):289–300.
+8. Edgar RC. Muscle5: High-accuracy alignment ensembles enable unbiased assessments of sequence homology and phylogeny. *Nat Commun.* 2022;13:6968.
+9. Zhang H, Zhang L, Mathews DH, Huang L. LinearCoPartition: linear-time cofolding and cofold base pair probability calculation of two RNAs. *Nucleic Acids Res.* 2023;51(18):e96.
+10. Almeida A, Nayfach S, Boland M, et al. A unified catalog of 204,938 reference genomes from the human gut microbiome. *Nat Biotechnol.* 2021;39(1):105–114.
+11. Gootenberg JS, Abudayyeh OO, Lee JW, et al. Nucleic acid detection with CRISPR-Cas13a/C2c2. *Science.* 2017;356(6336):438–442.
+12. Calderón IL, Barros MJ, Fernández-Navarro N, Acuña LG. Detection of nucleic acids of the fish pathogen *Yersinia ruckeri* from planktonic and biofilm samples with a CRISPR/Cas13a-based assay. *Microorganisms.* 2024;12(2):283.
+13. Aguayo C, Flores R, Lévesque S, et al. Rapid spread of *Clostridium difficile* NAP1/027/ST1 in Chile confirms the emergence of the epidemic strain in Latin America. *Epidemiol Infect.* 2015;143(14):3069–3073.
+14. Plaza-Garrido Á, Barra-Carrasco J, Macias JH, et al. Predominance of *Clostridium difficile* ribotypes 012, 027 and 046 in a university hospital in Chile, 2012. *Epidemiol Infect.* 2016;144(5):976–979.
+15. Rupnik M, Wilcox MH, Gerding DN. *Clostridium difficile* infection: new developments in epidemiology and pathogenesis. *Nat Rev Microbiol.* 2009;7(7):526–536.
 
 ---
 
 ## Citation
 
-If you use this pipeline or its outputs, please cite:
+> Cabezas-Mera FS, Moya-Beltrán AR, et al. Computational design and in silico validation of a multiplexed SHERLOCK CRISPR-Cas13a diagnostic panel for toxigenic *Clostridioides difficile* from Chilean clinical samples. [*In preparation*, 2026]
 
-> Cabezas-Mera F et al. Computational design and in silico validation of a multiplexed SHERLOCK CRISPR-Cas13a diagnostic panel for toxigenic *Clostridioides difficile* from Chilean clinical samples. [*In preparation*, 2026]
+---
+
+## Acknowledgments
+
+This work is part of the project *"Diseño e implementación de una plataforma de detección molecular sensible y específica de cepas toxigénicas de Clostridioides difficile desde muestras clínicas, mediante un sistema CRISPR-Cas"* (Concurso Endowment I+D, UNAB 2025). The authors thank Dr. Iván Calderón Lizana (UNAB) and Dr. Lillian Acuña Olivares (UNAB) for their experimental expertise in SHERLOCK/LwCas13a, and Dra. Paola Pidal Méndez and Dra. Erna Cona Trujillo (Clínica Indisa) for their clinical guidance and access to characterized clinical isolates.
 
 ---
 
@@ -449,4 +420,4 @@ If you use this pipeline or its outputs, please cite:
 
 MIT License — see `LICENSE` file.
 
-**Contact:** Fausto Cabezas-Mera · [github.com/fcabezasmera](https://github.com/fcabezasmera)
+**Contact:** Fausto Sebastián Cabezas-Mera · [fcabezasme@utem.cl](mailto:fcabezasme@utem.cl) · [github.com/fcabezasmera](https://github.com/fcabezasmera)
