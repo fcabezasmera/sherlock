@@ -1,5 +1,8 @@
 # SHERLOCK crRNA Design Pipeline v2.0
 
+<img width="1024" height="559" alt="imagen" src="https://github.com/user-attachments/assets/8a0efa24-a0c7-4174-8614-287f77d2f08a" />
+
+
 **Computational pipeline for the design and in silico validation of a multiplexed CRISPR-Cas13a (SHERLOCK) diagnostic assay targeting toxigenic *Clostridioides difficile* from Chilean clinical fecal samples.**
 
 ---
